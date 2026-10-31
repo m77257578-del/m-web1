@@ -142,6 +142,7 @@ import {
   importDataJsonContent,
   DATA_JSON_SYNC_EVENT,
 } from '../services/dataJsonService';
+import { subscribeToRatings, deleteRating } from '../services/ratings';
 import { compressImageFileToDataUrl } from '../utils/imageCompressor';
 
 interface AdminModalProps {
@@ -149,7 +150,7 @@ interface AdminModalProps {
   onClose: () => void;
 }
 
-type AdminTab = 'brand-settings' | 'mysql-bridge' | 'media-placements' | 'ai-monitor' | 'live-chat' | 'payment-methods' | 'orders' | 'demo-platforms' | 'client-projects' | 'articles' | 'projects' | 'applicants' | 'social' | 'security';
+type AdminTab = 'brand-settings' | 'mysql-bridge' | 'media-placements' | 'user-ratings' | 'ai-monitor' | 'live-chat' | 'payment-methods' | 'orders' | 'demo-platforms' | 'client-projects' | 'articles' | 'projects' | 'applicants' | 'social' | 'security';
 
 export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -276,6 +277,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [newSocialUrl, setNewSocialUrl] = useState('');
   const [socialSavedMessage, setSocialSavedMessage] = useState<string | null>(null);
 
+  // Ratings state
+  const [adminRatings, setAdminRatings] = useState<any[]>([]);
+
   useEffect(() => {
     if (isOpen) {
       const auth = isAdminAuthenticated();
@@ -311,12 +315,16 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     const unsubOrders = subscribeToOrdersFromFirestore((updatedOrders) => {
       setOrders(updatedOrders);
     });
+    const unsubRatings = subscribeToRatings((updatedRatings) => {
+      setAdminRatings(updatedRatings);
+    });
     return () => {
       window.removeEventListener('live_chat_updated', handleChatUpdate);
       window.removeEventListener(AI_MONITOR_EVENT, handleAiMonitorUpdate);
       window.removeEventListener(DATA_JSON_SYNC_EVENT, handleDataJsonSync);
       unsubAuth();
       unsubOrders();
+      unsubRatings();
     };
   }, [isOpen]);
 
@@ -340,6 +348,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     setDemoPlatforms(getDemoPlatforms());
     setClientProjects(getClientProjects());
     setArticlesList(getArticles());
+    setAdminRatings([]); // Will be populated by subscription
     try {
       const customStored = localStorage.getItem('webrex_custom_projects');
       if (customStored) {
@@ -869,18 +878,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                   type="button"
                   onClick={downloadDataJsonBackup}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border bg-slate-900 hover:bg-slate-800 border-cyan-500/40 text-cyan-300 text-xs font-bold transition-colors cursor-pointer"
-                  title="تحميل ملف data.json"
+                  title="أحفظ بيانات التطبيق (Backup)"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">data.json</span>
+                  <span className="hidden sm:inline">أحفظ البيانات</span>
                 </button>
 
                 <label
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border bg-slate-900 hover:bg-slate-800 border-indigo-500/40 text-indigo-300 text-xs font-bold transition-colors cursor-pointer"
-                  title="استيراد ورفع ملف data.json"
+                  title="استرجاع بيانات التطبيق (Upload data.json)"
                 >
                   <Upload className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">استيراد</span>
+                  <span className="hidden sm:inline">استرجاع البيانات</span>
                   <input
                     ref={dataJsonImportRef}
                     type="file"
@@ -1047,6 +1056,17 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
               >
                 <Video className="w-3.5 h-3.5 text-rose-400" />
                 <span>نشر الصور والفيديوهات بالأقسام</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('user-ratings')}
+                className={`pb-3 px-3 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'user-ratings'
+                    ? 'border-cyan-400 text-cyan-400 font-bold'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Star className="w-3.5 h-3.5 text-amber-400" />
+                <span>إدارة التقييمات</span>
               </button>
 
               <button
@@ -1529,6 +1549,56 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                       <span>حفظ وتطبيق إعدادات المنصة والبريد ورابط الموقع فورياً</span>
                     </button>
                   </form>
+
+                  {/* Backup & Restore Data Section */}
+                  <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-4 h-4 text-amber-400" />
+                      <h4 className="text-sm font-bold text-white">إدارة وحفظ بيانات التطبيق (Backup & Restore)</h4>
+                    </div>
+                    <p className="text-xs text-slate-400">
+                      يمكنك تحميل نسخة احتياطية كاملة من بيانات المنصة (data.json) واستعادتها في أي وقت أو نقلها لمنصة أخرى.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={downloadDataJsonBackup}
+                        className="flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 font-bold text-sm transition-all cursor-pointer shadow-md"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>أحفظ بيانات التطبيق (تحميل data.json)</span>
+                      </button>
+
+                      <label className="flex items-center justify-center gap-2 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 border border-indigo-500/40 text-indigo-300 font-bold text-sm transition-all cursor-pointer shadow-md relative">
+                        <Upload className="w-4 h-4" />
+                        <span>استرجاع بيانات التطبيق (رفع data.json)</span>
+                        <input
+                          type="file"
+                          accept=".json,application/json"
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = async () => {
+                              if (typeof reader.result === 'string') {
+                                const res = await importDataJsonContent(reader.result);
+                                if (res.ok) {
+                                  refreshData();
+                                  setDataJsonSyncNotice('تم استرجاع وتطبيق بيانات التطبيق ومزامنتها بنجاح! ✓');
+                                  setTimeout(() => setDataJsonSyncNotice(null), 5000);
+                                } else {
+                                  alert('خطأ في استيراد الملف: ' + (res.error || 'تنسيق غير صالح'));
+                                }
+                              }
+                            };
+                            reader.readAsText(file);
+                          }}
+                        />
+                      </label>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -2022,13 +2092,75 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                           );
                         })()}
                       </div>
-
                     </div>
                   )}
                 </div>
               )}
 
-              {/* TAB: Payment Methods Settings */}
+              {/* TAB: User Ratings Management */}
+              {activeTab === 'user-ratings' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <h4 className="text-lg font-black text-white flex items-center gap-2">
+                        <Star className="w-5 h-5 text-amber-400" />
+                        <span>إدارة تقييمات وآراء العملاء</span>
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-1">تصفح وحذف التقييمات التي يرسلها العملاء من الموقع مباشرة.</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <span className="font-bold text-white bg-slate-950 px-2 py-1 rounded-lg border border-slate-800">{adminRatings.length}</span>
+                      <span>إجمالي التقييمات</span>
+                    </div>
+                  </div>
+
+                  {adminRatings.length === 0 ? (
+                    <div className="p-12 rounded-3xl bg-slate-950 border border-slate-800 text-center space-y-3">
+                      <Star className="w-10 h-10 text-slate-800 mx-auto" />
+                      <p className="text-sm text-slate-500 font-bold">لا توجد تقييمات منشورة حالياً لتظهر هنا.</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {adminRatings.map((rating) => (
+                        <div key={rating.id} className="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between gap-4">
+                          <div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex gap-1">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star key={i} className={`w-3.5 h-3.5 ${i < rating.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-800'}`} />
+                                ))}
+                              </div>
+                              <span className="text-[10px] text-slate-500 font-mono">{new Date(rating.createdAt).toLocaleString('ar-EG')}</span>
+                            </div>
+                            <p className="text-xs text-slate-200 leading-relaxed italic mb-4">"{rating.comment}"</p>
+                          </div>
+                          <div className="flex items-center justify-between pt-4 border-t border-slate-900">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-cyan-950 flex items-center justify-center text-cyan-400">
+                                <Users className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="text-xs font-bold text-white">{rating.userName}</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                if (confirm('هل أنت متأكد من حذف هذا التقييم نهائياً؟')) {
+                                  deleteRating(rating.id);
+                                }
+                              }}
+                              className="p-2 rounded-xl bg-slate-900 text-rose-400 hover:bg-rose-950/40 border border-slate-800 transition-colors cursor-pointer"
+                              title="حذف التقييم"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+                {/* TAB: Payment Methods Settings */}
               {activeTab === 'payment-methods' && (
                 <div className="space-y-6">
                   {paymentNotice && (

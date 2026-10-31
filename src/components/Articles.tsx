@@ -11,7 +11,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { Article, getArticles } from '../services/articles';
+import { Article, useArticles } from '../services/articles';
 import { useLanguage } from '../context/LanguageContext';
 import { localizeArticle } from '../i18n';
 
@@ -21,23 +21,10 @@ interface ArticlesProps {
 
 export const Articles: React.FC<ArticlesProps> = ({ onNavigateToOrder }) => {
   const { t, language, td } = useLanguage();
-  const [rawArticles, setRawArticles] = useState<Article[]>([]);
+  const articles = useArticles().map((a) => localizeArticle(a, language));
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeArticleModal, setActiveArticleModal] = useState<Article | null>(null);
   const [copiedLink, setCopiedLink] = useState(false);
-
-  useEffect(() => {
-    loadArticles();
-    const handleStorageChange = () => loadArticles();
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  const loadArticles = () => {
-    setRawArticles(getArticles());
-  };
-
-  const articles = rawArticles.map((a) => localizeArticle(a, language));
 
   const categories = ['all', ...Array.from(new Set(articles.map(a => a.category)))];
 

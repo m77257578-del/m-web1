@@ -22,6 +22,7 @@ export type PlatformTab =
   | 'all' 
   | 'demo-platforms' 
   | 'client-projects' 
+  | 'ratings'
   | 'articles' 
   | 'services' 
   | 'payment-methods' 
@@ -77,6 +78,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'all' as PlatformTab, label: t.home },
     { id: 'demo-platforms' as PlatformTab, label: t.demoPlatforms },
     { id: 'client-projects' as PlatformTab, label: t.clientProjects },
+    { id: 'ratings' as PlatformTab, label: t.ratingsTitle },
     { id: 'articles' as PlatformTab, label: t.articles },
     { id: 'payment-methods' as PlatformTab, label: t.paymentMethods },
     { id: 'services' as PlatformTab, label: t.services },

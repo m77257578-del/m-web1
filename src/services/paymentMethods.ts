@@ -3,7 +3,8 @@ import {
   deleteCatalogDocFromFirestore,
   subscribeToCatalogCollection,
 } from './firebase';
-import { syncSectionToDataJson } from './dataJsonService';
+import { syncSectionToDataJson, DATA_JSON_SYNC_EVENT, AUTO_DATA_REFRESHED_EVENT } from './dataJsonService';
+import { useState, useEffect } from 'react';
 
 export interface PaymentMethodItem {
   id: string;
@@ -222,4 +223,23 @@ export function resetPaymentMethods(): PaymentMethodItem[] {
     console.error(e);
   }
   return DEFAULT_PAYMENT_METHODS;
+}
+export function usePaymentMethods(): PaymentMethodItem[] {
+  const [methods, setMethods] = useState<PaymentMethodItem[]>(getPaymentMethods);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setMethods(getPaymentMethods());
+    };
+    window.addEventListener(EVENT_NAME, handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener(AUTO_DATA_REFRESHED_EVENT, handleUpdate);
+    return () => {
+      window.removeEventListener(EVENT_NAME, handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener(AUTO_DATA_REFRESHED_EVENT, handleUpdate);
+    };
+  }, []);
+
+  return methods;
 }

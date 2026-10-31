@@ -29,7 +29,7 @@ import {
   ArrowRight,
   ArrowLeft
 } from 'lucide-react';
-import { DemoPlatform, getDemoPlatforms } from '../services/demoPlatforms';
+import { DemoPlatform, useDemoPlatforms } from '../services/demoPlatforms';
 import { useLanguage } from '../context/LanguageContext';
 import { localizeDemoPlatform } from '../i18n';
 import { ProtectedVideoPlayer } from './ProtectedVideoPlayer';
@@ -40,7 +40,7 @@ interface DemoPlatformsProps {
 
 export const DemoPlatforms: React.FC<DemoPlatformsProps> = ({ onSelectPlatformToOrder }) => {
   const { t, language, td } = useLanguage();
-  const [rawPlatforms, setRawPlatforms] = useState<DemoPlatform[]>([]);
+  const platforms = useDemoPlatforms().map((p) => localizeDemoPlatform(p, language));
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activePreviewPlatform, setActivePreviewPlatform] = useState<DemoPlatform | null>(null);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
@@ -70,19 +70,6 @@ export const DemoPlatforms: React.FC<DemoPlatformsProps> = ({ onSelectPlatformTo
     }
   };
 
-  useEffect(() => {
-    loadPlatforms();
-    const handleStorageChange = () => loadPlatforms();
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  const loadPlatforms = () => {
-    const list = getDemoPlatforms();
-    setRawPlatforms(list);
-  };
-
-  const platforms = rawPlatforms.map((p) => localizeDemoPlatform(p, language));
 
   const categories = ['all', ...Array.from(new Set(platforms.map(p => p.category)))];
 

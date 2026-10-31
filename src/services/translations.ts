@@ -104,6 +104,9 @@ export interface Translations {
   typeMessage: string;
   send: string;
   freeConsultation: string;
+  footerFAQ: string;
+  footerPrivacy: string;
+  footerSupport: string;
 
   // Additional UI strings
   clientLiveStatus: string;
@@ -146,6 +149,7 @@ export interface Translations {
   navOrderNow: string;
   quickLinks: string;
   contactUs: string;
+  ratingsTitle: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -153,7 +157,7 @@ export const translations: Record<Language, Translations> = {
     // Common & Nav
     home: 'الرئيسية',
     demoPlatforms: 'منصات المعاينة',
-    clientProjects: 'أعمال العملاء',
+    clientProjects: 'أعمالنا المتميزة',
     articles: 'مقالاتنا',
     paymentMethods: 'طرق الدفع',
     services: 'خدماتنا',
@@ -191,9 +195,9 @@ export const translations: Record<Language, Translations> = {
     allCategories: 'جميع التصنيفات',
 
     // Client Projects
-    clientBadge: 'مشاريع تم تسليمها وتشغيلها بنجاح',
-    clientProjectsTitle: 'أعمال ومشاريع العملاء المنشورة',
-    clientProjectsDesc: 'منصات ومواقع حية تعمل الآن بكفاءة عالية في السوق.',
+    clientBadge: 'مواقع ومنصات تم برمجتها بنجاح',
+    clientProjectsTitle: 'أعمالنا البرمجية والمواقع',
+    clientProjectsDesc: 'استعرض نخبة من الحلول البرمجية والمواقع التي قمنا ببرمجتها وتطويرها بالكامل.',
     visitLiveProject: 'زيارة الموقع الحي',
 
     // Services
@@ -285,7 +289,7 @@ export const translations: Record<Language, Translations> = {
     interactiveSimulatorReady: 'نظام سحابي مرخص جاهز للتشغيل الفوري',
     navHome: 'الرئيسية',
     navDemoPlatforms: 'منصات المعاينة',
-    navClientProjects: 'أعمال العملاء',
+    navClientProjects: 'أعمالنا',
     navArticles: 'مقالاتنا',
     navPaymentMethods: 'طرق الدفع',
     navServices: 'خدماتنا',
@@ -294,13 +298,17 @@ export const translations: Record<Language, Translations> = {
     navJoinUs: 'انضم إلينا',
     navOrderNow: 'اطلب مشروعك',
     quickLinks: 'روابط سريعة',
-    contactUs: 'تواصل معنا'
+    contactUs: 'تواصل معنا',
+    footerFAQ: 'الأسئلة الشائعة',
+    footerPrivacy: 'سياسة الخصوصية',
+    footerSupport: 'دعم العملاء',
+    ratingsTitle: 'تقييماتنا'
   },
   en: {
     // Common & Nav
     home: 'Home',
     demoPlatforms: 'Demo Platforms',
-    clientProjects: 'Client Works',
+    clientProjects: 'Our Works',
     articles: 'Articles',
     paymentMethods: 'Payments',
     services: 'Services',
@@ -339,7 +347,7 @@ export const translations: Record<Language, Translations> = {
 
     // Client Projects
     clientBadge: 'Successfully Delivered & Operating Projects',
-    clientProjectsTitle: 'Published Client Works & Success Stories',
+    clientProjectsTitle: 'Our Works',
     clientProjectsDesc: 'Live production web apps operating at high speed and scale.',
     visitLiveProject: 'Visit Live Site',
 
@@ -432,7 +440,7 @@ export const translations: Record<Language, Translations> = {
     interactiveSimulatorReady: 'Licensed Cloud System Ready for Instant Deployment',
     navHome: 'Home',
     navDemoPlatforms: 'Demo Platforms',
-    navClientProjects: 'Client Works',
+    navClientProjects: 'Our Works',
     navArticles: 'Articles',
     navPaymentMethods: 'Payments',
     navServices: 'Services',
@@ -441,6 +449,10 @@ export const translations: Record<Language, Translations> = {
     navJoinUs: 'Join Us',
     navOrderNow: 'Order Now',
     quickLinks: 'Quick Links',
-    contactUs: 'Contact Us'
+    contactUs: 'Contact Us',
+    footerFAQ: 'FAQ',
+    footerPrivacy: 'Privacy Policy',
+    footerSupport: 'Customer Support',
+    ratingsTitle: 'Client Ratings & Reviews'
   }
 };

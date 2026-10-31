@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { syncCatalogDocToFirestore, subscribeToSettingsDoc } from './firebase';
-import { syncSectionToDataJson } from './dataJsonService';
+import { syncSectionToDataJson, DATA_JSON_SYNC_EVENT, AUTO_DATA_REFRESHED_EVENT } from './dataJsonService';
 import {
   PaymentGatewaySettings,
   DEFAULT_PAYMENT_GATEWAY_SETTINGS,
@@ -175,11 +175,14 @@ export function usePlatformSettings(): PlatformSettings {
 
     window.addEventListener('platform_settings_changed', handleSettingsChanged);
     window.addEventListener('storage', handleSettingsChanged);
+    window.addEventListener(AUTO_DATA_REFRESHED_EVENT, handleSettingsChanged);
     return () => {
       window.removeEventListener('platform_settings_changed', handleSettingsChanged);
       window.removeEventListener('storage', handleSettingsChanged);
+      window.removeEventListener(AUTO_DATA_REFRESHED_EVENT, handleSettingsChanged);
     };
   }, []);
 
   return settings;
 }
+

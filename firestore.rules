@@ -120,5 +120,13 @@ service cloud.firestore {
       allow create, update: if isValidId(settingId) && isValidCatalogItem(incoming());
       allow delete: if isValidId(settingId);
     }
+    
+    // User Ratings: Public create, public read
+    match /user_ratings/{ratingId} {
+      allow get: if isValidId(ratingId);
+      allow list: if resource.data.id is string;
+      allow create: if isValidId(ratingId) && isValidCatalogItem(incoming());
+      allow update, delete: if false; // Only allow creation for users
+    }
   }
 }

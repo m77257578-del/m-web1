@@ -1,9 +1,14 @@
+import { useState, useEffect } from 'react';
 import {
   syncCatalogDocToFirestore,
   deleteCatalogDocFromFirestore,
   subscribeToCatalogCollection,
 } from './firebase';
-import { syncSectionToDataJson } from './dataJsonService';
+import {
+  syncSectionToDataJson,
+  DATA_JSON_SYNC_EVENT,
+  AUTO_DATA_REFRESHED_EVENT,
+} from './dataJsonService';
 
 export interface PlatformMedia {
   id: string;
@@ -148,3 +153,24 @@ export const resetDemoPlatforms = (): DemoPlatform[] => {
   saveDemoPlatforms([]);
   return [];
 };
+
+export function useDemoPlatforms(): DemoPlatform[] {
+  const [platforms, setPlatforms] = useState<DemoPlatform[]>(getDemoPlatforms);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setPlatforms(getDemoPlatforms());
+    };
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener(DATA_JSON_SYNC_EVENT, handleUpdate);
+    window.addEventListener(AUTO_DATA_REFRESHED_EVENT, handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener(DATA_JSON_SYNC_EVENT, handleUpdate);
+      window.removeEventListener(AUTO_DATA_REFRESHED_EVENT, handleUpdate);
+    };
+  }, []);
+
+  return platforms;
+}
+

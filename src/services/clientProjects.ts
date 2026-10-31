@@ -1,9 +1,14 @@
+import { useState, useEffect } from 'react';
 import {
   syncCatalogDocToFirestore,
   deleteCatalogDocFromFirestore,
   subscribeToCatalogCollection,
 } from './firebase';
-import { syncSectionToDataJson } from './dataJsonService';
+import {
+  syncSectionToDataJson,
+  DATA_JSON_SYNC_EVENT,
+  AUTO_DATA_REFRESHED_EVENT,
+} from './dataJsonService';
 
 export interface ClientProject {
   id: string;
@@ -125,3 +130,24 @@ export const resetClientProjects = (): ClientProject[] => {
   saveClientProjects([]);
   return [];
 };
+
+export function useClientProjects(): ClientProject[] {
+  const [projects, setProjects] = useState<ClientProject[]>(getClientProjects);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setProjects(getClientProjects());
+    };
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener(DATA_JSON_SYNC_EVENT, handleUpdate);
+    window.addEventListener(AUTO_DATA_REFRESHED_EVENT, handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener(DATA_JSON_SYNC_EVENT, handleUpdate);
+      window.removeEventListener(AUTO_DATA_REFRESHED_EVENT, handleUpdate);
+    };
+  }, []);
+
+  return projects;
+}
+

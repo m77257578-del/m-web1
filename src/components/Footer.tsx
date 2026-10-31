@@ -96,45 +96,22 @@ export const Footer: React.FC<FooterProps> = ({
             </div>
           </div>
 
-          {/* Quick Links */}
           <div className="space-y-3">
             <h5 className="text-sm font-bold text-white tracking-wide">
-              {t.quickLinks}
+              {language === 'ar' ? 'دعم العملاء' : 'Support'}
             </h5>
             <ul className="space-y-2 text-xs">
               <li>
-                <a href="#demo-platforms" className="hover:text-cyan-400 transition-colors text-cyan-300 font-semibold">
-                  {t.navDemoPlatforms}
-                </a>
+                <button
+                  onClick={() => (window as any).openRatingModal()}
+                  className="hover:text-cyan-400 transition-colors text-amber-300 font-semibold cursor-pointer"
+                >
+                  {language === 'ar' ? 'قيم خدماتنا' : 'Rate Our Services'}
+                </button>
               </li>
               <li>
-                <a href="#client-projects" className="hover:text-cyan-400 transition-colors">
-                  {t.navClientProjects}
-                </a>
-              </li>
-              <li>
-                <a href="#articles" className="hover:text-cyan-400 transition-colors text-cyan-300 font-semibold">
-                  {t.navArticles}
-                </a>
-              </li>
-              <li>
-                <a href="#payment-methods" className="hover:text-cyan-400 transition-colors">
-                  {t.navPaymentMethods}
-                </a>
-              </li>
-              <li>
-                <a href="#services" className="hover:text-cyan-400 transition-colors">
-                  {t.navServices}
-                </a>
-              </li>
-              <li>
-                <a href="#join-us" className="hover:text-cyan-400 transition-colors text-emerald-300 font-semibold">
-                  {t.navJoinUs}
-                </a>
-              </li>
-              <li>
-                <a href="#order-form" className="hover:text-cyan-400 transition-colors">
-                  {t.navOrderNow}
+                <a href="#faq" className="hover:text-cyan-400 transition-colors">
+                  {t.footerFAQ}
                 </a>
               </li>
             </ul>

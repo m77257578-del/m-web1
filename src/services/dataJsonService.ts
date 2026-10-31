@@ -65,8 +65,9 @@ const SECTION_STORAGE_KEYS: Record<DataJsonSectionKey, string> = {
 };
 
 export const DATA_JSON_SYNC_EVENT = 'mweb_data_json_synced';
+export const AUTO_DATA_REFRESHED_EVENT = 'mweb_auto_data_refreshed';
 
-function dispatchAllUIUpdateEvents(payload?: Partial<MasterDataJsonSchema>) {
+function dispatchAllUIUpdateEvents(payload?: Partial<MasterDataJsonSchema>, isAutoNotification = false) {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new Event('storage'));
   if (payload?.platformSettings) {
@@ -91,15 +92,23 @@ function dispatchAllUIUpdateEvents(payload?: Partial<MasterDataJsonSchema>) {
   window.dispatchEvent(new CustomEvent('mweb_ai_monitor_updated'));
   window.dispatchEvent(new CustomEvent('developer_applicants_updated'));
   window.dispatchEvent(new CustomEvent(DATA_JSON_SYNC_EVENT, { detail: payload }));
+  if (isAutoNotification) {
+    window.dispatchEvent(new CustomEvent(AUTO_DATA_REFRESHED_EVENT, { detail: payload }));
+  }
 }
 
 /**
  * Applies a MasterDataJsonSchema object into localStorage and triggers UI refresh events.
  */
-export function applyMasterDataToLocalCache(data: Partial<MasterDataJsonSchema>): void {
-  if (typeof window === 'undefined' || !data || typeof data !== 'object') return;
-
+export function applyDataToLocalCache(data: MasterDataJsonSchema) {
+  let isNewerUpdate = false;
   try {
+    const prevTs = localStorage.getItem('mweb_data_json_updated_at');
+    if (data.updatedAt && data.updatedAt !== prevTs) {
+      isNewerUpdate = Boolean(prevTs); // true if we already had a previous version
+      localStorage.setItem('mweb_data_json_updated_at', data.updatedAt);
+    }
+
     if (data.platformSettings && typeof data.platformSettings === 'object' && Object.keys(data.platformSettings).length > 0) {
       localStorage.setItem(
         SECTION_STORAGE_KEYS.platformSettings,
@@ -163,14 +172,11 @@ export function applyMasterDataToLocalCache(data: Partial<MasterDataJsonSchema>)
     if (typeof data.adminPasscode === 'string' && data.adminPasscode.trim().length >= 4) {
       localStorage.setItem(SECTION_STORAGE_KEYS.adminPasscode, data.adminPasscode.trim());
     }
-    if (data.updatedAt) {
-      localStorage.setItem('mweb_data_json_updated_at', data.updatedAt);
-    }
   } catch (e) {
     console.warn('Error applying data.json to local cache:', e);
   }
 
-  dispatchAllUIUpdateEvents(data);
+  dispatchAllUIUpdateEvents(data, isNewerUpdate);
 }
 
 /**
@@ -353,7 +359,7 @@ export async function fetchAndHydrateFromDataJson(): Promise<MasterDataJsonSchem
 
     // If server data.json has been updated by an admin on any phone, apply it immediately!
     if (serverData.updatedAt) {
-      applyMasterDataToLocalCache(serverData);
+      applyDataToLocalCache(serverData);
     }
     return serverData;
   } catch (e) {
@@ -396,16 +402,22 @@ export function initDataJsonRealtimeSync(): void {
       `data_sec_${sec}`,
       (docPayload) => {
         if (docPayload && docPayload.value !== undefined) {
-          applyMasterDataToLocalCache({
+          applyDataToLocalCache({
             [sec]: docPayload.value,
             updatedAt: docPayload.updatedAtIso || new Date().toISOString(),
+            version: 1,
           });
         }
       }
     );
   });
 
-  // 3. Re-fetch when user switches back to the browser tab or unlocks their phone
+  // 3. Fast real-time background polling interval (2.5s) to detect updates across all devices
+  setInterval(() => {
+    fetchAndHydrateFromDataJson();
+  }, 2500);
+
+  // 4. Re-fetch when user switches back to the browser tab or unlocks their phone
   window.addEventListener('focus', () => {
     fetchAndHydrateFromDataJson();
   });
@@ -447,7 +459,7 @@ export async function importDataJsonContent(rawJson: string): Promise<{
     if (!parsed || typeof parsed !== 'object') {
       return { ok: false, error: 'ملف data.json غير صالح.' };
     }
-    applyMasterDataToLocalCache(parsed);
+    applyDataToLocalCache({ ...parsed, version: 1 });
     await pushAllLocalStateToDataJsonAndCloud();
     return { ok: true };
   } catch (e: any) {
@@ -533,7 +545,7 @@ export async function syncFirebaseWithMySqlBridge(
     if (res.ok) {
       const json = await res.json();
       if (direction === 'mysql_to_firebase' && json.data) {
-        applyMasterDataToLocalCache(json.data);
+        applyDataToLocalCache({ ...json.data, version: 1 });
         await pushAllLocalStateToDataJsonAndCloud();
       }
       return json;

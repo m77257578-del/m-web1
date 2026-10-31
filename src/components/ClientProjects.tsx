@@ -20,7 +20,7 @@ import {
   X,
   Send
 } from 'lucide-react';
-import { ClientProject, getClientProjects } from '../services/clientProjects';
+import { ClientProject, useClientProjects } from '../services/clientProjects';
 import { useLanguage } from '../context/LanguageContext';
 import { localizeClientProject } from '../i18n';
 import { ProtectedVideoPlayer } from './ProtectedVideoPlayer';
@@ -31,7 +31,7 @@ interface ClientProjectsProps {
 
 export const ClientProjects: React.FC<ClientProjectsProps> = ({ onNavigateToOrder }) => {
   const { t, language, td } = useLanguage();
-  const [rawProjects, setRawProjects] = useState<ClientProject[]>([]);
+  const projects = useClientProjects().map((p) => localizeClientProject(p, language));
   const [selectedIndustry, setSelectedIndustry] = useState<string>('all');
   const [activeVideoUrl, setActiveVideoUrl] = useState<string | null>(null);
   const [activeVideoTitle, setActiveVideoTitle] = useState<string>('');
@@ -55,19 +55,6 @@ export const ClientProjects: React.FC<ClientProjectsProps> = ({ onNavigateToOrde
       try { playerRef.current.seekTo(newTime, 'seconds'); } catch (e) {}
     }
   };
-
-  useEffect(() => {
-    loadProjects();
-    const handleStorageChange = () => loadProjects();
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  const loadProjects = () => {
-    setRawProjects(getClientProjects());
-  };
-
-  const projects = rawProjects.map((p) => localizeClientProject(p, language));
 
   const getEmbedUrl = (url: string) => {
     if (!url) return '';

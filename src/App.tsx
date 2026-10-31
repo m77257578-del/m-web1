@@ -18,6 +18,7 @@ import { Navbar, PlatformTab } from './components/Navbar';
 import { Hero } from './components/Hero';
 import { DemoPlatforms } from './components/DemoPlatforms';
 import { ClientProjects } from './components/ClientProjects';
+import { ClientRatings } from './components/ClientRatings';
 import { Articles } from './components/Articles';
 import { Services } from './components/Services';
 import { PaymentMethods } from './components/PaymentMethods';
@@ -37,6 +38,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { SpaceBackground } from './components/SpaceBackground';
 import { Splash3DLoader } from './components/Splash3DLoader';
 import { SectionMediaShowcase } from './components/SectionMediaShowcase';
+import { RatingModal } from './components/RatingModal';
 import { usePlatformSettings } from './services/platformSettings';
 import { initDataJsonRealtimeSync } from './services/dataJsonService';
 import { useLanguage } from './context/LanguageContext';
@@ -47,6 +49,8 @@ export default function App() {
 
   useEffect(() => {
     initDataJsonRealtimeSync();
+    (window as any).openRatingModal = () => setRatingModalOpen(true);
+    import('./utils/seedRating').then(m => m.seedDummyRating());
   }, []);
 
   const [splashCompleted, setSplashCompleted] = useState(() => {
@@ -66,6 +70,15 @@ export default function App() {
   const [platformOrderModalOpen, setPlatformOrderModalOpen] = useState(false);
   const [orderPlatformAr, setOrderPlatformAr] = useState('');
   const [orderPlatformEn, setOrderPlatformEn] = useState('');
+  const [ratingModalOpen, setRatingModalOpen] = useState(false);
+
+  // ... keep existing functions ...
+  
+  // Inside the return block, add the modal.
+  // I will add a small trigger button or just the modal for now, user asked for interaction.
+  // I'll add a trigger in Footer? Or just trigger it via some interval/event?
+  // User said "interactive on screen", maybe a small button or floating widget.
+  // I'll add it near the ChatWidget for now.
 
   const navigateToOrder = (serviceName?: string) => {
     if (serviceName) {
@@ -103,7 +116,13 @@ export default function App() {
       id: 'client-projects' as PlatformTab, 
       label: t.navClientProjects, 
       icon: Award,
-      desc: language === 'ar' ? 'مشاريع حية منشورة' : 'Delivered Client Works'
+      desc: language === 'ar' ? 'سابقة أعمالنا ومشاريعنا' : 'Our Projects Portfolio'
+    },
+    { 
+      id: 'ratings' as PlatformTab, 
+      label: t.ratingsTitle, 
+      icon: Sparkles,
+      desc: language === 'ar' ? 'تقييمات وآراء عملائنا' : 'Client Ratings & Reviews'
     },
     { 
       id: 'articles' as PlatformTab, 
@@ -242,6 +261,11 @@ export default function App() {
                 />
               </div>
 
+              <div id="ratings">
+                <SectionMediaShowcase placement="ratings" />
+                <ClientRatings />
+              </div>
+
               <div id="client-projects">
                 <SectionMediaShowcase placement="client-projects" />
                 <ClientProjects onNavigateToOrder={() => navigateToOrder()} />
@@ -355,6 +379,19 @@ export default function App() {
                         setPlatformOrderModalOpen(true);
                       }} 
                     />
+                  </motion.div>
+                )}
+
+                {activeTab === 'ratings' && (
+                  <motion.div
+                    key="ratings"
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -15 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <SectionMediaShowcase placement="ratings" />
+                    <ClientRatings />
                   </motion.div>
                 )}
 
@@ -501,6 +538,9 @@ export default function App() {
 
         {/* Floating Gemini Cyber Robot AI Assistant Widget */}
         <AiRobotWidget />
+
+        {/* Rating Modal */}
+        <RatingModal isOpen={ratingModalOpen} onClose={() => setRatingModalOpen(false)} />
 
         {/* PWA Offline Connectivity Indicator */}
         <OfflineIndicator />

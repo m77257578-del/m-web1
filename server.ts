@@ -582,17 +582,22 @@ async function startServer() {
   });
 
   app.post('/api/gemini/chat', async (req, res) => {
+    let brandNameAr = 'إم ويب';
+    let brandNameEn = 'M Web';
+    let whatsappPhone = '201000000000';
     try {
+      const body = req.body || {};
+      brandNameAr = body.brandNameAr || brandNameAr;
+      brandNameEn = body.brandNameEn || brandNameEn;
+      whatsappPhone = body.whatsappPhone || whatsappPhone;
+
       const {
         history = [],
         message = '',
         imageUrl,
         imageMimeType,
         mode = 'general',
-        brandNameAr = 'إم ويب',
-        brandNameEn = 'M Web',
-        whatsappPhone = '201000000000',
-      } = req.body || {};
+      } = body;
 
       const ai = getGenAIClient();
       if (!ai) {

@@ -1,5 +1,6 @@
 import { syncCatalogDocToFirestore, subscribeToSettingsDoc } from './firebase';
-import { syncSectionToDataJson } from './dataJsonService';
+import { syncSectionToDataJson, DATA_JSON_SYNC_EVENT, AUTO_DATA_REFRESHED_EVENT } from './dataJsonService';
+import { useState, useEffect } from 'react';
 
 export interface SocialLink {
   id: string;
@@ -148,4 +149,24 @@ export function deleteSocialLink(id: string): void {
 
 export function resetSocialLinks(): void {
   saveSocialLinks(DEFAULT_SOCIAL_LINKS);
+}
+
+export function useSocialLinks(): SocialLink[] {
+  const [links, setLinks] = useState<SocialLink[]>(getSocialLinks);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setLinks(getSocialLinks());
+    };
+    window.addEventListener('webrex_social_links_updated', handleUpdate);
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener(AUTO_DATA_REFRESHED_EVENT, handleUpdate);
+    return () => {
+      window.removeEventListener('webrex_social_links_updated', handleUpdate);
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener(AUTO_DATA_REFRESHED_EVENT, handleUpdate);
+    };
+  }, []);
+
+  return links;
 }

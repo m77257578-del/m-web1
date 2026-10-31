@@ -16,7 +16,7 @@ import {
   Wallet,
   AlertCircle,
 } from 'lucide-react';
-import { getPaymentMethods, PaymentMethodItem } from '../services/paymentMethods';
+import { getPaymentMethods, PaymentMethodItem, usePaymentMethods } from '../services/paymentMethods';
 import { usePlatformSettings } from '../services/platformSettings';
 import {
   PaymentModeType,
@@ -34,7 +34,7 @@ export const PaymentMethods: React.FC<PaymentMethodsProps> = () => {
   const { t, language } = useLanguage();
   const settings = usePlatformSettings();
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [methods, setMethods] = useState<PaymentMethodItem[]>(getPaymentMethods);
+  const methods = usePaymentMethods();
   const [selectedMode, setSelectedMode] = useState<PaymentModeType>('manual');
 
   // Interactive Kashier Checkout state (when kashierEnabled is true)
@@ -43,16 +43,6 @@ export const PaymentMethods: React.FC<PaymentMethodsProps> = () => {
   const [kashierAmount, setKashierAmount] = useState<number>(1500);
   const [kashierSession, setKashierSession] = useState<KashierCheckoutSession | null>(null);
   const [copiedKashierLink, setCopiedKashierLink] = useState(false);
-
-  useEffect(() => {
-    const handleUpdate = () => {
-      setMethods(getPaymentMethods());
-    };
-    window.addEventListener('mweb_payment_methods_changed', handleUpdate);
-    return () => {
-      window.removeEventListener('mweb_payment_methods_changed', handleUpdate);
-    };
-  }, []);
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);

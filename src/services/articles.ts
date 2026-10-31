@@ -1,9 +1,14 @@
+import { useState, useEffect } from 'react';
 import {
   syncCatalogDocToFirestore,
   deleteCatalogDocFromFirestore,
   subscribeToCatalogCollection,
 } from './firebase';
-import { syncSectionToDataJson } from './dataJsonService';
+import {
+  syncSectionToDataJson,
+  DATA_JSON_SYNC_EVENT,
+  AUTO_DATA_REFRESHED_EVENT,
+} from './dataJsonService';
 
 export interface Article {
   id: string;
@@ -123,3 +128,24 @@ export const resetArticles = (): Article[] => {
   saveArticles([]);
   return [];
 };
+
+export function useArticles(): Article[] {
+  const [articles, setArticles] = useState<Article[]>(getArticles);
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      setArticles(getArticles());
+    };
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener(DATA_JSON_SYNC_EVENT, handleUpdate);
+    window.addEventListener(AUTO_DATA_REFRESHED_EVENT, handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener(DATA_JSON_SYNC_EVENT, handleUpdate);
+      window.removeEventListener(AUTO_DATA_REFRESHED_EVENT, handleUpdate);
+    };
+  }, []);
+
+  return articles;
+}
+

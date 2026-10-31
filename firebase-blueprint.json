@@ -116,6 +116,10 @@
     "/settings/{settingId}": {
       "schema": "CatalogItem",
       "description": "إعدادات المنصة العامة"
+    },
+    "/user_ratings/{ratingId}": {
+      "schema": "CatalogItem",
+      "description": "تقييمات العملاء وآرائهم"
     }
   }
 }

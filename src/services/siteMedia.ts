@@ -7,6 +7,7 @@ export type MediaPlacementLocation =
   | 'hero-bottom'
   | 'demo-platforms'
   | 'client-projects'
+  | 'ratings'
   | 'payment-methods'
   | 'articles'
   | 'services'
@@ -49,9 +50,15 @@ export const MEDIA_PLACEMENT_OPTIONS: MediaPlacementOption[] = [
   },
   {
     id: 'client-projects',
-    labelAr: 'قسم أعمال ومشاريع العملاء',
-    labelEn: 'Client Projects Section',
-    badgeAr: 'أعمال العملاء',
+    labelAr: 'قسم أعمالنا (سابقاً أعمال العملاء)',
+    labelEn: 'Our Works Section',
+    badgeAr: 'أعمالنا',
+  },
+  {
+    id: 'ratings',
+    labelAr: 'قسم تقييمات وآراء العملاء',
+    labelEn: 'Client Ratings Section',
+    badgeAr: 'تقييماتنا',
   },
   {
     id: 'articles',
