@@ -106,3 +106,70 @@ export function generateWelcomeMessage(
   }
   return `مرحباً يا بطل! أنا رفيقك الآلي الذكي (Cyber Robot Buddy) 🤖⚡\nأنظمتي البرمجية في ${brandNameAr} (${brandNameEn}) مستعدة لمساعدتك الفورية في اختيار المنصة المناسبة لمشروعك، شرح المميزات التقنية والأسعار، واقتراح الحلول البرمجية لجميع استفساراتك بدقة!`;
 }
+
+let sharedAudioCtx: AudioContext | null = null;
+
+/**
+ * Plays a gentle, pleasant, crystalline click/chime sound using Web Audio API
+ * when the user clicks the AI Robot icon or controls.
+ */
+export function playCyberRobotClickSound(
+  kind: 'open' | 'minimize' | 'close' | 'send' = 'open'
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const AudioContextClass =
+      window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    if (!sharedAudioCtx) {
+      sharedAudioCtx = new AudioContextClass();
+    }
+    if (sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume().catch(() => {});
+    }
+
+    const now = sharedAudioCtx.currentTime;
+    const osc1 = sharedAudioCtx.createOscillator();
+    const osc2 = sharedAudioCtx.createOscillator();
+    const gain = sharedAudioCtx.createGain();
+
+    osc1.type = 'sine';
+    osc2.type = 'triangle';
+
+    if (kind === 'open') {
+      // Soft ascending two-note pop-chime (pleasant & light)
+      osc1.frequency.setValueAtTime(660, now);
+      osc1.frequency.exponentialRampToValueAtTime(990, now + 0.085);
+      osc2.frequency.setValueAtTime(1320, now);
+      osc2.frequency.exponentialRampToValueAtTime(1760, now + 0.085);
+    } else if (kind === 'send') {
+      osc1.frequency.setValueAtTime(740, now);
+      osc1.frequency.exponentialRampToValueAtTime(1110, now + 0.07);
+      osc2.frequency.setValueAtTime(1480, now);
+      osc2.frequency.exponentialRampToValueAtTime(1980, now + 0.07);
+    } else {
+      // Gentle soft tap for minimize / close
+      osc1.frequency.setValueAtTime(780, now);
+      osc1.frequency.exponentialRampToValueAtTime(520, now + 0.065);
+      osc2.frequency.setValueAtTime(1170, now);
+      osc2.frequency.exponentialRampToValueAtTime(780, now + 0.065);
+    }
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.11, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0008, now + 0.095);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(sharedAudioCtx.destination);
+
+    osc1.start(now);
+    osc2.start(now);
+    osc1.stop(now + 0.1);
+    osc2.stop(now + 0.1);
+  } catch {
+    // Ignore audio context restrictions if any
+  }
+}
+

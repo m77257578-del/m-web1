@@ -33,6 +33,7 @@ import { WhatsAppOrderModal } from './components/WhatsAppOrderModal';
 import { PlatformOrderModal } from './components/PlatformOrderModal';
 import { ChatWidget } from './components/ChatWidget';
 import { AiRobotWidget } from './components/AiRobotWidget';
+import { OfflineIndicator } from './components/OfflineIndicator';
 import { SpaceBackground } from './components/SpaceBackground';
 import { Splash3DLoader } from './components/Splash3DLoader';
 import { usePlatformSettings } from './services/platformSettings';
@@ -469,6 +470,9 @@ export default function App() {
 
         {/* Floating Gemini Cyber Robot AI Assistant Widget */}
         <AiRobotWidget />
+
+        {/* PWA Offline Connectivity Indicator */}
+        <OfflineIndicator />
       </div>
     </>
   );

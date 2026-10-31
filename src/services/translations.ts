@@ -134,6 +134,18 @@ export interface Translations {
   instantBookingRequest: string;
   viewPricingPackages: string;
   interactiveSimulatorReady: string;
+  navHome: string;
+  navDemoPlatforms: string;
+  navClientProjects: string;
+  navArticles: string;
+  navPaymentMethods: string;
+  navServices: string;
+  navPortfolio: string;
+  navWhyUs: string;
+  navJoinUs: string;
+  navOrderNow: string;
+  quickLinks: string;
+  contactUs: string;
 }
 
 export const translations: Record<Language, Translations> = {
@@ -270,7 +282,19 @@ export const translations: Record<Language, Translations> = {
     activeResponsiveServer: 'خادم نشط وسريع الاستجابة',
     instantBookingRequest: 'طلب حجز فوري',
     viewPricingPackages: 'عرض طرق الباقات',
-    interactiveSimulatorReady: 'نظام سحابي مرخص جاهز للتشغيل الفوري'
+    interactiveSimulatorReady: 'نظام سحابي مرخص جاهز للتشغيل الفوري',
+    navHome: 'الرئيسية',
+    navDemoPlatforms: 'منصات المعاينة',
+    navClientProjects: 'أعمال العملاء',
+    navArticles: 'مقالاتنا',
+    navPaymentMethods: 'طرق الدفع',
+    navServices: 'خدماتنا',
+    navPortfolio: 'نماذج البرمجة',
+    navWhyUs: 'لماذا نحن',
+    navJoinUs: 'انضم إلينا',
+    navOrderNow: 'اطلب مشروعك',
+    quickLinks: 'روابط سريعة',
+    contactUs: 'تواصل معنا'
   },
   en: {
     // Common & Nav
@@ -405,6 +429,18 @@ export const translations: Record<Language, Translations> = {
     activeResponsiveServer: 'Active & Responsive Server',
     instantBookingRequest: 'Instant Booking Request',
     viewPricingPackages: 'View Pricing Packages',
-    interactiveSimulatorReady: 'Licensed Cloud System Ready for Instant Deployment'
+    interactiveSimulatorReady: 'Licensed Cloud System Ready for Instant Deployment',
+    navHome: 'Home',
+    navDemoPlatforms: 'Demo Platforms',
+    navClientProjects: 'Client Works',
+    navArticles: 'Articles',
+    navPaymentMethods: 'Payments',
+    navServices: 'Services',
+    navPortfolio: 'Portfolio',
+    navWhyUs: 'Why Us',
+    navJoinUs: 'Join Us',
+    navOrderNow: 'Order Now',
+    quickLinks: 'Quick Links',
+    contactUs: 'Contact Us'
   }
 };

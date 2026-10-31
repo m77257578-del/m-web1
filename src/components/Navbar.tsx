@@ -16,6 +16,7 @@ import {
 import { usePlatformSettings } from '../services/platformSettings';
 import { useLanguage } from '../context/LanguageContext';
 import { LanguageSelector } from './LanguageSelector';
+import { PWAInstallButton } from './PWAInstallButton';
 
 export type PlatformTab = 
   | 'all' 
@@ -180,6 +181,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Actions & CTA */}
           <div className="hidden sm:flex items-center gap-2.5">
+            {/* Install App PWA Button */}
+            <PWAInstallButton variant="navbar" />
+
             {/* Language Switcher */}
             <LanguageSelector variant="navbar" />
 
@@ -206,6 +210,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Mobile menu toggle */}
           <div className="flex xl:hidden items-center gap-2">
+            <PWAInstallButton variant="compact" />
             <LanguageSelector variant="compact" />
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}

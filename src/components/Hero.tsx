@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { usePlatformSettings } from '../services/platformSettings';
 import { useLanguage } from '../context/LanguageContext';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeroProps {
   onNavigateToOrder: () => void;
@@ -125,6 +126,8 @@ export const Hero: React.FC<HeroProps> = ({
                 <span>{t.heroCTASecondary}</span>
                 {language === 'ar' ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
               </button>
+
+              <PWAInstallButton variant="hero" />
             </motion.div>
 
             {/* Quick Guarantees / Highlights */}

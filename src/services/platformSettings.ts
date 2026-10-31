@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { syncCatalogDocToFirestore, subscribeToCatalogCollection } from './firebase';
+import {
+  PaymentGatewaySettings,
+  DEFAULT_PAYMENT_GATEWAY_SETTINGS,
+  normalizePaymentGatewaySettings,
+} from './paymentGatewayConfig';
 
-export interface PlatformSettings {
+export interface PlatformSettings extends PaymentGatewaySettings {
   brandNameAr: string;
   brandNameEn: string;
   logoMain: string;
@@ -47,28 +52,35 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   aiBotNameAr: 'الروبوت البرمجي الذكي',
   aiBotNameEn: 'Smart Cyber Robot',
   liveChatEnabled: true,
+  ...DEFAULT_PAYMENT_GATEWAY_SETTINGS,
 };
+
+function mergeWithDefaults(rawObj?: Partial<PlatformSettings> | null): PlatformSettings {
+  const gateway = normalizePaymentGatewaySettings(rawObj);
+  return {
+    ...DEFAULT_PLATFORM_SETTINGS,
+    ...(rawObj || {}),
+    taglineEn: rawObj?.taglineEn || DEFAULT_PLATFORM_SETTINGS.taglineEn,
+    descriptionEn: rawObj?.descriptionEn || DEFAULT_PLATFORM_SETTINGS.descriptionEn,
+    addressTextEn: rawObj?.addressTextEn || DEFAULT_PLATFORM_SETTINGS.addressTextEn,
+    aiBotEnabled:
+      typeof rawObj?.aiBotEnabled === 'boolean'
+        ? rawObj.aiBotEnabled
+        : DEFAULT_PLATFORM_SETTINGS.aiBotEnabled,
+    aiBotNameAr: rawObj?.aiBotNameAr || DEFAULT_PLATFORM_SETTINGS.aiBotNameAr,
+    aiBotNameEn: rawObj?.aiBotNameEn || DEFAULT_PLATFORM_SETTINGS.aiBotNameEn,
+    liveChatEnabled:
+      typeof rawObj?.liveChatEnabled === 'boolean'
+        ? rawObj.liveChatEnabled
+        : DEFAULT_PLATFORM_SETTINGS.liveChatEnabled,
+    ...gateway,
+  };
+}
 
 subscribeToCatalogCollection<PlatformSettings>(COLLECTION_NAME, (cloudDocs) => {
   const mainSettings = cloudDocs[0];
   if (mainSettings && mainSettings.brandNameAr) {
-    const merged: PlatformSettings = {
-      ...DEFAULT_PLATFORM_SETTINGS,
-      ...mainSettings,
-      taglineEn: mainSettings.taglineEn || DEFAULT_PLATFORM_SETTINGS.taglineEn,
-      descriptionEn: mainSettings.descriptionEn || DEFAULT_PLATFORM_SETTINGS.descriptionEn,
-      addressTextEn: mainSettings.addressTextEn || DEFAULT_PLATFORM_SETTINGS.addressTextEn,
-      aiBotEnabled:
-        typeof mainSettings.aiBotEnabled === 'boolean'
-          ? mainSettings.aiBotEnabled
-          : DEFAULT_PLATFORM_SETTINGS.aiBotEnabled,
-      aiBotNameAr: mainSettings.aiBotNameAr || DEFAULT_PLATFORM_SETTINGS.aiBotNameAr,
-      aiBotNameEn: mainSettings.aiBotNameEn || DEFAULT_PLATFORM_SETTINGS.aiBotNameEn,
-      liveChatEnabled:
-        typeof mainSettings.liveChatEnabled === 'boolean'
-          ? mainSettings.liveChatEnabled
-          : DEFAULT_PLATFORM_SETTINGS.liveChatEnabled,
-    };
+    const merged = mergeWithDefaults(mainSettings);
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
       window.dispatchEvent(new CustomEvent('platform_settings_changed', { detail: merged }));
@@ -83,23 +95,7 @@ export function getPlatformSettings(): PlatformSettings {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      return {
-        ...DEFAULT_PLATFORM_SETTINGS,
-        ...parsed,
-        taglineEn: parsed.taglineEn || DEFAULT_PLATFORM_SETTINGS.taglineEn,
-        descriptionEn: parsed.descriptionEn || DEFAULT_PLATFORM_SETTINGS.descriptionEn,
-        addressTextEn: parsed.addressTextEn || DEFAULT_PLATFORM_SETTINGS.addressTextEn,
-        aiBotEnabled:
-          typeof parsed.aiBotEnabled === 'boolean'
-            ? parsed.aiBotEnabled
-            : DEFAULT_PLATFORM_SETTINGS.aiBotEnabled,
-        aiBotNameAr: parsed.aiBotNameAr || DEFAULT_PLATFORM_SETTINGS.aiBotNameAr,
-        aiBotNameEn: parsed.aiBotNameEn || DEFAULT_PLATFORM_SETTINGS.aiBotNameEn,
-        liveChatEnabled:
-          typeof parsed.liveChatEnabled === 'boolean'
-            ? parsed.liveChatEnabled
-            : DEFAULT_PLATFORM_SETTINGS.liveChatEnabled,
-      };
+      return mergeWithDefaults(parsed);
     }
   } catch (e) {
     console.warn('Could not load platform settings:', e);
@@ -109,10 +105,10 @@ export function getPlatformSettings(): PlatformSettings {
 
 export function savePlatformSettings(settings: Partial<PlatformSettings>): PlatformSettings {
   const current = getPlatformSettings();
-  const updated = {
+  const updated = mergeWithDefaults({
     ...current,
     ...settings,
-  };
+  });
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     const currentLang = localStorage.getItem('mweb_preferred_language') || 'ar';

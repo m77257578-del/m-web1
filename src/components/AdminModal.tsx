@@ -123,13 +123,21 @@ import {
   resetPaymentMethods, 
   PaymentMethodItem 
 } from '../services/paymentMethods';
+import {
+  getAllAiMonitoredSessions,
+  markAiSessionReadByAdmin,
+  deleteAiMonitoredSession,
+  clearAllAiMonitoredSessions,
+  AiMonitoredSession,
+  AI_MONITOR_EVENT,
+} from '../services/aiChatMonitor';
 
 interface AdminModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type AdminTab = 'brand-settings' | 'live-chat' | 'payment-methods' | 'orders' | 'demo-platforms' | 'client-projects' | 'articles' | 'projects' | 'applicants' | 'social' | 'security';
+type AdminTab = 'brand-settings' | 'ai-monitor' | 'live-chat' | 'payment-methods' | 'orders' | 'demo-platforms' | 'client-projects' | 'articles' | 'projects' | 'applicants' | 'social' | 'security';
 
 export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -149,6 +157,10 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [adminAttachment, setAdminAttachment] = useState<ChatAttachment | null>(null);
   const adminFileInputRef = useRef<HTMLInputElement>(null);
   const [previewAdminMediaUrl, setPreviewAdminMediaUrl] = useState<string | null>(null);
+
+  // AI Monitored Conversations state
+  const [aiSessions, setAiSessions] = useState<AiMonitoredSession[]>([]);
+  const [selectedAiSessionId, setSelectedAiSessionId] = useState<string | null>(null);
 
   // Payment Methods state
   const [paymentMethodsList, setPaymentMethodsList] = useState<PaymentMethodItem[]>([]);
@@ -263,7 +275,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
       setChatThreads(threads);
     };
 
+    const handleAiMonitorUpdate = () => {
+      const monitored = getAllAiMonitoredSessions();
+      setAiSessions(monitored);
+    };
+
     window.addEventListener('live_chat_updated', handleChatUpdate);
+    window.addEventListener(AI_MONITOR_EVENT, handleAiMonitorUpdate);
     const unsubAuth = onAdminAuthStateChange((user) => {
       setCloudUserEmail(user?.email || null);
       if (user?.email === 'aljamd210@gmail.com') {
@@ -275,6 +293,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     });
     return () => {
       window.removeEventListener('live_chat_updated', handleChatUpdate);
+      window.removeEventListener(AI_MONITOR_EVENT, handleAiMonitorUpdate);
       unsubAuth();
       unsubOrders();
     };
@@ -283,6 +302,11 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const refreshData = () => {
     setBrandForm(getPlatformSettings());
     setPaymentMethodsList(getPaymentMethods());
+    const monitoredAi = getAllAiMonitoredSessions();
+    setAiSessions(monitoredAi);
+    if (monitoredAi.length > 0 && !selectedAiSessionId) {
+      setSelectedAiSessionId(monitoredAi[0].sessionId);
+    }
     const threads = getAllChatThreads();
     setChatThreads(threads);
     if (threads.length > 0 && !selectedThreadId) {
@@ -899,10 +923,29 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 }`}
               >
                 <Building2 className="w-3.5 h-3.5 text-cyan-400" />
-                <span>إعدادات اسم المنصة الهوية</span>
+                <span>إعدادات اسم المنصة والهوية</span>
               </button>
 
               <button
+                data-testid="admin-tab-ai-monitor"
+                onClick={() => setActiveTab('ai-monitor')}
+                className={`pb-3 px-3 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap relative ${
+                  activeTab === 'ai-monitor'
+                    ? 'border-cyan-400 text-cyan-400 font-bold'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+                <span>مراقبة محادثات الذكاء الاصطناعي ({aiSessions.length})</span>
+                {aiSessions.filter((s) => s.unreadByAdmin).length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full bg-cyan-500 text-slate-950 text-[10px] font-black">
+                    {aiSessions.filter((s) => s.unreadByAdmin).length}
+                  </span>
+                )}
+              </button>
+
+              <button
+                data-testid="admin-tab-live-chat"
                 onClick={() => setActiveTab('live-chat')}
                 className={`pb-3 px-3 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap relative ${
                   activeTab === 'live-chat'
@@ -920,6 +963,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
               </button>
 
               <button
+                data-testid="admin-tab-payment-methods"
                 onClick={() => setActiveTab('payment-methods')}
                 className={`pb-3 px-3 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
                   activeTab === 'payment-methods'
@@ -928,7 +972,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 }`}
               >
                 <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
-                <span>وسائل وطرق الدفع ({paymentMethodsList.length})</span>
+                <span>طرق الدفع وبوابة كاشير ({paymentMethodsList.length})</span>
               </button>
 
               <button
@@ -1066,47 +1110,58 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                                 : 'bg-rose-950/80 border-rose-500/50 text-rose-300'
                             }`}
                           >
-                            {brandForm.aiBotEnabled !== false ? 'مُفعّل وظاهر بالموقع' : 'مخفي من الموقع'}
+                            {brandForm.aiBotEnabled !== false ? 'مُفعّل وظاهر بالموقع' : 'مُلغى ومخفي من الموقع'}
                           </span>
                         </div>
                         <p className="text-xs text-slate-300">
-                          تحكم بضغطة واحدة في إظهار أو إخفاء أيقونة الروبوت البرمجي الذكي المربوط بمحرك Gemini من واجهة الموقع للزوار.
+                          تحكم بضغطة واحدة في فتح أو إلغاء أيقونة الذكاء الاصطناعي ومراقبة محادثات الزوار مع الروبوت الذكي.
                         </p>
                       </div>
 
-                      <button
-                        type="button"
-                        data-testid="toggle-ai-robot-visibility"
-                        onClick={() => {
-                          const nextState = brandForm.aiBotEnabled === false ? true : false;
-                          const updated = { ...brandForm, aiBotEnabled: nextState };
-                          setBrandForm(updated);
-                          savePlatformSettings(updated);
-                          setBrandSavedMsg(
-                            nextState
-                              ? 'تم إظهار وتفعيل أيقونة روبوت الذكاء الاصطناعي في الموقع بنجاح!'
-                              : 'تم إخفاء أيقونة روبوت الذكاء الاصطناعي من واجهة الموقع فوراً!'
-                          );
-                          setTimeout(() => setBrandSavedMsg(null), 3500);
-                        }}
-                        className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shrink-0 ${
-                          brandForm.aiBotEnabled !== false
-                            ? 'bg-rose-600/90 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20'
-                            : 'bg-gradient-to-r from-cyan-400 to-teal-400 text-slate-950 shadow-lg shadow-cyan-500/20'
-                        }`}
-                      >
-                        {brandForm.aiBotEnabled !== false ? (
-                          <>
-                            <EyeOff className="w-4 h-4" />
-                            <span>إخفاء أيقونة الذكاء الاصطناعي</span>
-                          </>
-                        ) : (
-                          <>
-                            <Eye className="w-4 h-4" />
-                            <span>إظهار أيقونة الذكاء الاصطناعي</span>
-                          </>
-                        )}
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('ai-monitor')}
+                          className="px-3.5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-cyan-500/40 text-cyan-300 font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>مراقبة محادثات الذكاء ({aiSessions.length})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          data-testid="toggle-ai-robot-visibility"
+                          onClick={() => {
+                            const nextState = brandForm.aiBotEnabled === false ? true : false;
+                            const updated = { ...brandForm, aiBotEnabled: nextState };
+                            setBrandForm(updated);
+                            savePlatformSettings(updated);
+                            setBrandSavedMsg(
+                              nextState
+                                ? 'تم فتح وتفعيل أيقونة روبوت الذكاء الاصطناعي في الموقع بنجاح!'
+                                : 'تم إلغاء وإخفاء أيقونة روبوت الذكاء الاصطناعي من واجهة الموقع فوراً!'
+                            );
+                            setTimeout(() => setBrandSavedMsg(null), 3500);
+                          }}
+                          className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shrink-0 ${
+                            brandForm.aiBotEnabled !== false
+                              ? 'bg-rose-600/90 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20'
+                              : 'bg-gradient-to-r from-cyan-400 to-teal-400 text-slate-950 shadow-lg shadow-cyan-500/20'
+                          }`}
+                        >
+                          {brandForm.aiBotEnabled !== false ? (
+                            <>
+                              <EyeOff className="w-4 h-4" />
+                              <span>إلغاء وإخفاء الذكاء الاصطناعي</span>
+                            </>
+                          ) : (
+                            <>
+                              <Eye className="w-4 h-4" />
+                              <span>فتح وإظهار الذكاء الاصطناعي</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
@@ -1133,6 +1188,69 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                         />
                       </div>
                     </div>
+                  </div>
+
+                  {/* Floating Customer Messages Icon Visibility Card */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-r from-teal-950/50 via-slate-950 to-slate-900 border border-teal-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4 text-teal-400" />
+                        <h5 className="text-sm font-black text-white">
+                          التحكم في الأيقونة العائمة للرسائل وخدمة العملاء المباشرة
+                        </h5>
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                            brandForm.liveChatEnabled !== false
+                              ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300'
+                              : 'bg-rose-950/80 border-rose-500/50 text-rose-300'
+                          }`}
+                        >
+                          {brandForm.liveChatEnabled !== false ? 'مُفعّلة وظاهرة بالموقع' : 'مُلغاة ومخفية من الموقع'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-300">
+                        تحكم بضغطة واحدة في فتح أو إلغاء الأيقونة العائمة للرسائل المباشرة مع العملاء في أسفل يسار الموقع.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      data-testid="toggle-live-chat-visibility"
+                      onClick={() => {
+                        const nextState = brandForm.liveChatEnabled === false ? true : false;
+                        const updated = { ...brandForm, liveChatEnabled: nextState };
+                        setBrandForm(updated);
+                        savePlatformSettings(updated);
+                        try {
+                          localStorage.setItem('webrex_chat_enabled', JSON.stringify(nextState));
+                        } catch {
+                          // ignore
+                        }
+                        setBrandSavedMsg(
+                          nextState
+                            ? 'تم فتح وإظهار الأيقونة العائمة للرسائل في الموقع بنجاح!'
+                            : 'تم إلغاء وإخفاء الأيقونة العائمة للرسائل من واجهة الموقع فوراً!'
+                        );
+                        setTimeout(() => setBrandSavedMsg(null), 3500);
+                      }}
+                      className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer shrink-0 ${
+                        brandForm.liveChatEnabled !== false
+                          ? 'bg-rose-600/90 hover:bg-rose-500 text-white shadow-lg shadow-rose-600/20'
+                          : 'bg-gradient-to-r from-teal-400 to-emerald-400 text-slate-950 shadow-lg shadow-teal-500/20'
+                      }`}
+                    >
+                      {brandForm.liveChatEnabled !== false ? (
+                        <>
+                          <EyeOff className="w-4 h-4" />
+                          <span>إلغاء الأيقونة العائمة للرسائل</span>
+                        </>
+                      ) : (
+                        <>
+                          <Eye className="w-4 h-4" />
+                          <span>فتح الأيقونة العائمة للرسائل</span>
+                        </>
+                      )}
+                    </button>
                   </div>
 
                   <form onSubmit={handleSaveBrandSettings} className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
@@ -1285,27 +1403,284 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                 </div>
               )}
 
+              {/* TAB: AI Conversations Monitor & AI Toggle */}
+              {activeTab === 'ai-monitor' && (
+                <div data-testid="admin-ai-monitor-panel" className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-cyan-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-cyan-400" />
+                        <h4 className="text-sm font-black text-white">
+                          مراقبة محادثات الذكاء الاصطناعي المباشرة (Gemini AI Logs)
+                        </h4>
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                            brandForm.aiBotEnabled !== false
+                              ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                              : 'bg-rose-950 text-rose-300 border-rose-700'
+                          }`}
+                        >
+                          {brandForm.aiBotEnabled !== false ? 'الذكاء الاصطناعي مفعل' : 'الذكاء الاصطناعي ملغى'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        راقب كافة الأسئلة التي يطرحها الزوار على الروبوت الذكي وإجابات Gemini بالتفصيل، مع إمكانية إلغاء أو فتح الروبوت فوراً.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextState = brandForm.aiBotEnabled === false ? true : false;
+                          const updated = { ...brandForm, aiBotEnabled: nextState };
+                          setBrandForm(updated);
+                          savePlatformSettings(updated);
+                        }}
+                        className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer ${
+                          brandForm.aiBotEnabled !== false
+                            ? 'bg-rose-600/90 hover:bg-rose-500 text-white'
+                            : 'bg-cyan-400 hover:bg-cyan-300 text-slate-950'
+                        }`}
+                      >
+                        {brandForm.aiBotEnabled !== false ? (
+                          <>
+                            <EyeOff className="w-3.5 h-3.5" />
+                            <span>إلغاء الذكاء الاصطناعي</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>فتح الذكاء الاصطناعي</span>
+                          </>
+                        )}
+                      </button>
+
+                      {aiSessions.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            clearAllAiMonitoredSessions();
+                            setAiSessions([]);
+                            setSelectedAiSessionId(null);
+                          }}
+                          className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-rose-950/60 text-slate-300 hover:text-rose-300 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>مسح السجل</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={refreshData}
+                        className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                        title="تحديث محادثات الذكاء الاصطناعي"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {aiSessions.length === 0 ? (
+                    <div className="p-12 text-center rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+                      <Sparkles className="w-10 h-10 text-cyan-500/50 mx-auto" />
+                      <p className="text-sm text-slate-300 font-bold">
+                        لا توجد محادثات مسجلة مع روبوت الذكاء الاصطناعي حتى الآن
+                      </p>
+                      <p className="text-xs text-slate-500 max-w-md mx-auto">
+                        بمجرد قيام أي زائر بإرسال سؤال إلى الروبوت البرمجي الذكي، ستظهر جلسته وكامل أسئلته وإجابات الذكاء الاصطناعي هنا للمراقبة الفورية.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 h-[430px]">
+                      {/* Sessions Sidebar */}
+                      <div className="bg-slate-950 rounded-2xl border border-slate-800 overflow-y-auto divide-y divide-slate-800/60">
+                        {aiSessions.map((sess) => {
+                          const isSelected = selectedAiSessionId === sess.sessionId;
+                          return (
+                            <button
+                              key={sess.sessionId}
+                              type="button"
+                              onClick={() => {
+                                setSelectedAiSessionId(sess.sessionId);
+                                markAiSessionReadByAdmin(sess.sessionId);
+                                setAiSessions(getAllAiMonitoredSessions());
+                              }}
+                              className={`w-full p-3.5 text-right flex flex-col gap-1 transition-colors cursor-pointer ${
+                                isSelected
+                                  ? 'bg-cyan-950/60 border-r-4 border-cyan-400'
+                                  : 'hover:bg-slate-900/60'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-white text-xs">{sess.visitorLabel}</span>
+                                {sess.unreadByAdmin && (
+                                  <span className="px-1.5 py-0.5 rounded-full bg-cyan-500 text-slate-950 text-[9px] font-black">
+                                    جديد
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-cyan-300 truncate w-full">
+                                س: {sess.lastUserQuestion}
+                              </p>
+                              <p className="text-[10px] text-slate-400 truncate w-full">
+                                ج: {sess.lastBotAnswer}
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Selected AI Session Transcript */}
+                      <div className="lg:col-span-2 bg-slate-950 rounded-2xl border border-slate-800 flex flex-col overflow-hidden">
+                        {(() => {
+                          const activeSess =
+                            aiSessions.find((s) => s.sessionId === selectedAiSessionId) ||
+                            aiSessions[0];
+                          if (!activeSess) return null;
+
+                          return (
+                            <>
+                              <div className="p-3 bg-slate-900 border-b border-slate-800 flex items-center justify-between">
+                                <div>
+                                  <h5 className="font-bold text-white text-xs">
+                                    {activeSess.visitorLabel}
+                                  </h5>
+                                  <span className="text-[10px] text-slate-400 font-mono">
+                                    ID: {activeSess.sessionId} • عدد الرسائل: {activeSess.turns.length}
+                                  </span>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const remaining = deleteAiMonitoredSession(activeSess.sessionId);
+                                    setAiSessions(remaining);
+                                    if (selectedAiSessionId === activeSess.sessionId) {
+                                      setSelectedAiSessionId(
+                                        remaining.length > 0 ? remaining[0].sessionId : null
+                                      );
+                                    }
+                                  }}
+                                  className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-950/40 cursor-pointer"
+                                  title="حذف سجل هذه الجلسة"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+
+                              <div className="flex-1 p-4 overflow-y-auto space-y-3 text-xs bg-slate-950/90">
+                                {activeSess.turns.map((turn) => {
+                                  const isBot = turn.role === 'model';
+                                  return (
+                                    <div
+                                      key={turn.id}
+                                      className={`flex flex-col ${
+                                        isBot ? 'items-start' : 'items-end'
+                                      }`}
+                                    >
+                                      <span className="text-[10px] text-slate-400 mb-0.5 px-1 font-semibold">
+                                        {isBot
+                                          ? `رد الذكاء الاصطناعي (${turn.modelUsed || 'Gemini'})`
+                                          : 'سؤال الزائر'}
+                                      </span>
+                                      <div
+                                        className={`max-w-[88%] p-3 rounded-2xl leading-relaxed whitespace-pre-line space-y-2 ${
+                                          isBot
+                                            ? 'bg-slate-900 border border-cyan-500/30 text-slate-100 rounded-bl-none'
+                                            : 'bg-cyan-700 text-white rounded-br-none'
+                                        }`}
+                                      >
+                                        {turn.imageUrl && (
+                                          <img
+                                            src={turn.imageUrl}
+                                            alt="Visitor upload"
+                                            className="max-h-36 rounded-lg border border-white/10"
+                                          />
+                                        )}
+                                        <div>{turn.text}</div>
+                                      </div>
+                                      <span className="text-[9px] text-slate-500 mt-0.5 px-1 font-mono">
+                                        {turn.timestamp}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* TAB: Live Customer Support Chat */}
               {activeTab === 'live-chat' && (
                 <div className="space-y-4">
-                  <div className="flex items-center justify-between">
+                  <div className="p-4 rounded-2xl bg-slate-950 border border-teal-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h4 className="text-sm font-bold text-white flex items-center gap-2">
                         <MessageSquare className="w-4 h-4 text-teal-400" />
                         <span>رسائل خدمة العملاء المباشرة من الأيقونة العائمة:</span>
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                            brandForm.liveChatEnabled !== false
+                              ? 'bg-emerald-950 text-emerald-300 border-emerald-700'
+                              : 'bg-rose-950 text-rose-300 border-rose-700'
+                          }`}
+                        >
+                          {brandForm.liveChatEnabled !== false ? 'الأيقونة العائمة مفعلة' : 'الأيقونة العائمة ملغاة'}
+                        </span>
                       </h4>
                       <p className="text-xs text-slate-400">
-                        تواصل مع الزوار والعملاء الذين يرسلون استفساراتهم من الأيقونة العائمة بالموقع مباشرة.
+                        تواصل مع الزوار والعملاء الذين يرسلون استفساراتهم من الأيقونة العائمة، أو قم بإلغاء/فتح الأيقونة من الموقع.
                       </p>
                     </div>
 
-                    <button
-                      onClick={refreshData}
-                      className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
-                      title="تحديث الرسائل"
-                    >
-                      <RefreshCw className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextState = brandForm.liveChatEnabled === false ? true : false;
+                          const updated = { ...brandForm, liveChatEnabled: nextState };
+                          setBrandForm(updated);
+                          savePlatformSettings(updated);
+                          try {
+                            localStorage.setItem('webrex_chat_enabled', JSON.stringify(nextState));
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                        className={`px-3.5 py-2 rounded-xl font-bold text-xs flex items-center gap-1.5 cursor-pointer ${
+                          brandForm.liveChatEnabled !== false
+                            ? 'bg-rose-600/90 hover:bg-rose-500 text-white'
+                            : 'bg-teal-400 hover:bg-teal-300 text-slate-950'
+                        }`}
+                      >
+                        {brandForm.liveChatEnabled !== false ? (
+                          <>
+                            <EyeOff className="w-3.5 h-3.5" />
+                            <span>إلغاء الأيقونة العائمة للرسائل</span>
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>فتح الأيقونة العائمة للرسائل</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={refreshData}
+                        className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors cursor-pointer"
+                        title="تحديث الرسائل"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
                   {chatThreads.length === 0 ? (
@@ -1534,14 +1909,213 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
                     </div>
                   )}
 
+                  {/* TWO PAYMENT MODES CONTROL PANEL: 1. Manual Payment vs 2. Kashier Electronic Payment */}
+                  <div className="p-5 rounded-2xl bg-slate-950 border border-cyan-500/40 space-y-5 shadow-xl">
+                    <div className="border-b border-slate-800 pb-3">
+                      <h4 className="text-sm font-black text-white flex items-center gap-2">
+                        <CreditCard className="w-4 h-4 text-cyan-400" />
+                        <span>التحكم الرئيسي في طريقتي الدفع (الدفع اليدوي vs الدفع الإلكتروني المربوط بكاشير Kashier)</span>
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-1">
+                        الدفع اليدوي مفعل افتراضياً، بينما الدفع الإلكتروني عبر بوابة كاشير (Kashier) مقفل افتراضياً ويمكنك تفعيله أو إغلاقه من هنا بضغطة زر.
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Mode 1 Card: Manual Payment */}
+                      <div className="p-4 rounded-2xl bg-slate-900/90 border border-emerald-500/40 flex flex-col justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-white">
+                              1. الدفع اليدوي المباشر (Manual Payment)
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                                brandForm.manualPaymentEnabled !== false
+                                  ? 'bg-emerald-950 text-emerald-300 border-emerald-600'
+                                  : 'bg-rose-950 text-rose-300 border-rose-600'
+                              }`}
+                            >
+                              {brandForm.manualPaymentEnabled !== false ? 'مُفعّل بالموقع ✅' : 'مقفل 🔒'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            يشمل التحويل اليدوي عبر انستا باي (InstaPay)، فودافون كاش، والتحويل البنكي المباشر.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          data-testid="toggle-manual-payment"
+                          onClick={() => {
+                            const nextManual = brandForm.manualPaymentEnabled === false ? true : false;
+                            const updated = { ...brandForm, manualPaymentEnabled: nextManual };
+                            setBrandForm(updated);
+                            savePlatformSettings(updated);
+                            setPaymentNotice(
+                              nextManual
+                                ? 'تم تفعيل طريقة الدفع اليدوي المباشر في الموقع!'
+                                : 'تم قفل الدفع اليدوي مؤقتاً!'
+                            );
+                            setTimeout(() => setPaymentNotice(null), 3000);
+                          }}
+                          className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                            brandForm.manualPaymentEnabled !== false
+                              ? 'bg-slate-800 hover:bg-rose-950/70 text-slate-200 hover:text-rose-300 border border-slate-700'
+                              : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                          }`}
+                        >
+                          {brandForm.manualPaymentEnabled !== false ? (
+                            <>
+                              <Lock className="w-3.5 h-3.5" />
+                              <span>إغلاق الدفع اليدوي</span>
+                            </>
+                          ) : (
+                            <>
+                              <Unlock className="w-3.5 h-3.5" />
+                              <span>تفعيل الدفع اليدوي</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Mode 2 Card: Electronic Payment via Kashier */}
+                      <div className="p-4 rounded-2xl bg-slate-900/90 border border-cyan-500/40 flex flex-col justify-between gap-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-black text-white">
+                              2. الدفع الإلكتروني (بوابة كاشير Kashier)
+                            </span>
+                            <span
+                              data-testid="admin-kashier-status-badge"
+                              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                                brandForm.kashierEnabled
+                                  ? 'bg-cyan-950 text-cyan-300 border-cyan-500'
+                                  : 'bg-amber-950 text-amber-300 border-amber-600'
+                              }`}
+                            >
+                              {brandForm.kashierEnabled ? 'مُفعّل ونشط ✅' : 'مقفل افتراضياً 🔒'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            مربوط ببوابة كاشير (Kashier Gateway) لدفع البطاقات البنكية والمحافظ إلكترونياً.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          data-testid="toggle-kashier-payment"
+                          onClick={() => {
+                            const nextKashier = !brandForm.kashierEnabled;
+                            const updated = { ...brandForm, kashierEnabled: nextKashier };
+                            setBrandForm(updated);
+                            savePlatformSettings(updated);
+                            setPaymentNotice(
+                              nextKashier
+                                ? 'تم فتح وتفعيل الدفع الإلكتروني عبر بوابة كاشير (Kashier) في الموقع!'
+                                : 'تم قفل الدفع الإلكتروني (كاشير) والاعتماد على الدفع اليدوي فقط!'
+                            );
+                            setTimeout(() => setPaymentNotice(null), 3000);
+                          }}
+                          className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                            brandForm.kashierEnabled
+                              ? 'bg-rose-600/90 hover:bg-rose-500 text-white'
+                              : 'bg-gradient-to-r from-cyan-400 to-teal-400 hover:opacity-95 text-slate-950 shadow-lg shadow-cyan-500/20'
+                          }`}
+                        >
+                          {brandForm.kashierEnabled ? (
+                            <>
+                              <Lock className="w-3.5 h-3.5" />
+                              <span>قفل الدفع الإلكتروني (كاشير)</span>
+                            </>
+                          ) : (
+                            <>
+                              <Unlock className="w-3.5 h-3.5" />
+                              <span>تفعيل وفتح الدفع الإلكتروني (كاشير)</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Kashier Gateway Credentials Configuration */}
+                    <div className="pt-3 border-t border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-cyan-300 mb-1">
+                          معرف التاجر في كاشير (Merchant ID)
+                        </label>
+                        <input
+                          type="text"
+                          dir="ltr"
+                          value={brandForm.kashierMerchantId || 'MID-28491-805'}
+                          onChange={(e) =>
+                            setBrandForm({ ...brandForm, kashierMerchantId: e.target.value })
+                          }
+                          placeholder="MID-28491-805"
+                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-cyan-300 mb-1">
+                          مفتاح API لبوابة كاشير (Public/API Key)
+                        </label>
+                        <input
+                          type="text"
+                          dir="ltr"
+                          value={brandForm.kashierPublicKey || ''}
+                          onChange={(e) =>
+                            setBrandForm({ ...brandForm, kashierPublicKey: e.target.value })
+                          }
+                          placeholder="pk_live_..."
+                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-cyan-300 text-xs font-mono"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-cyan-300 mb-1">
+                          بيئة تشغيل كاشير (Mode)
+                        </label>
+                        <select
+                          value={brandForm.kashierMode || 'test'}
+                          onChange={(e) =>
+                            setBrandForm({
+                              ...brandForm,
+                              kashierMode: e.target.value === 'live' ? 'live' : 'test',
+                            })
+                          }
+                          className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-800 text-white text-xs font-bold"
+                        >
+                          <option value="test">وضع التجربة (Test Mode)</option>
+                          <option value="live">وضع التفعيل الحقيقي (Live Mode)</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-end">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            savePlatformSettings(brandForm);
+                            setPaymentNotice('تم حفظ إعدادات ومفاتيح بوابة كاشير (Kashier) بنجاح!');
+                            setTimeout(() => setPaymentNotice(null), 3000);
+                          }}
+                          className="w-full py-2 px-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Save className="w-3.5 h-3.5" />
+                          <span>حفظ إعدادات كاشير</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <h4 className="text-sm font-bold text-white flex items-center gap-2">
                         <CreditCard className="w-4 h-4 text-emerald-400" />
-                        <span>إدارة وسائل وطرق الدفع المتاحة بالموقع:</span>
+                        <span>إدارة قنوات وحسابات الدفع اليدوي المتاحة بالموقع:</span>
                       </h4>
                       <p className="text-xs text-slate-400">
-                        قم بتحديد وإضافة قنوات الدفع (انستا باي، فودافون كاش، الراجحي، NBE، بايبال، إلخ) وتفعيلها أو إيقافها.
+                        قم بتحديد وإضافة قنوات الدفع اليدوي (انستا باي، فودافون كاش، الراجحي، NBE، بايبال، إلخ) وتفعيلها أو إيقافها.
                       </p>
                     </div>
 

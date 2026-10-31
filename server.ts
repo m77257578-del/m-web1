@@ -37,13 +37,18 @@ function buildSystemInstruction(brandNameAr = 'إم ويب', brandNameEn = 'M We
   ].join('\n');
 }
 
-function buildContentsFromHistory(history, currentMessage, imageUrl, imageMimeType) {
-  const contents = [];
+function buildContentsFromHistory(
+  history: Array<{ role?: string; text?: string; imageUrl?: string; imageMimeType?: string }>,
+  currentMessage: string,
+  imageUrl?: string,
+  imageMimeType?: string
+) {
+  const contents: Array<{ role: string; parts: Array<Record<string, unknown>> }> = [];
 
   if (Array.isArray(history)) {
     for (const item of history.slice(-14)) {
       if (!item || (item.role !== 'user' && item.role !== 'model')) continue;
-      const parts = [];
+      const parts: Array<Record<string, unknown>> = [];
       if (typeof item.imageUrl === 'string' && item.imageUrl.startsWith('data:')) {
         const commaIdx = item.imageUrl.indexOf(',');
         if (commaIdx !== -1) {

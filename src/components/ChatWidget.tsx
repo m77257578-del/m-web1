@@ -164,7 +164,8 @@ export const ChatWidget: React.FC = () => {
     setShowUserInfoForm(false);
   };
 
-  if (!enabled) return null;
+  // Respect Admin visibility setting for Floating Customer Support Messages Icon immediately
+  if (settings.liveChatEnabled === false || !enabled) return null;
 
   const messages: ChatMessage[] = thread?.messages || [
     {
@@ -458,6 +459,7 @@ export const ChatWidget: React.FC = () => {
       {/* Floating Toggle Icon */}
       <button
         type="button"
+        data-testid="live-chat-floating-button"
         onClick={handleToggleOpen}
         className="relative group w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-600 via-cyan-500 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white flex items-center justify-center shadow-2xl shadow-cyan-500/40 transition-all transform hover:scale-105 active:scale-95 cursor-pointer"
         title={`Chat with ${settings.brandNameEn}`}

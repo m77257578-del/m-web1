@@ -19,7 +19,12 @@ import {
   RobotChatTurn,
   RobotTaskMode,
   generateWelcomeMessage,
+  playCyberRobotClickSound,
 } from '../utils/aiRobotHelper';
+import {
+  getOrCreateAiVisitorSessionId,
+  recordAiConversationExchange,
+} from '../services/aiChatMonitor';
 
 const CHAT_HISTORY_STORAGE_KEY = 'mweb_cyber_robot_history_v1';
 
@@ -287,6 +292,7 @@ export const AiRobotWidget: React.FC = () => {
     const textToSend = (customPrompt !== undefined ? customPrompt : inputValue).trim();
     if ((!textToSend && !attachedImage) || isLoading) return;
 
+    playCyberRobotClickSound('send');
     const currentImage = attachedImage;
     setInputValue('');
     setAttachedImage(null);
@@ -305,9 +311,12 @@ export const AiRobotWidget: React.FC = () => {
     setIsLoading(true);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
       const response = await fetch('/api/gemini/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           history: historySnapshot,
           message: textToSend,
@@ -319,6 +328,7 @@ export const AiRobotWidget: React.FC = () => {
           whatsappPhone: settings.whatsappPhone,
         }),
       });
+      clearTimeout(timeoutId);
 
       const data = await response.json();
 
@@ -337,6 +347,8 @@ export const AiRobotWidget: React.FC = () => {
         modelUsed: data.model || (taskMode === 'fast' ? 'gemini-3.1-flash-lite' : 'gemini-3.8-flash'),
       };
 
+      const aiVisitorId = getOrCreateAiVisitorSessionId();
+      recordAiConversationExchange(aiVisitorId, userTurn, botTurn);
       setMessages((prev) => [...prev, botTurn]);
       speakText(replyText);
     } catch {
@@ -347,6 +359,8 @@ export const AiRobotWidget: React.FC = () => {
         text: fallbackText,
         timestamp: formatTime(),
       };
+      const aiVisitorId = getOrCreateAiVisitorSessionId();
+      recordAiConversationExchange(aiVisitorId, userTurn, botTurn);
       setMessages((prev) => [...prev, botTurn]);
       speakText(fallbackText);
     } finally {
@@ -365,7 +379,10 @@ export const AiRobotWidget: React.FC = () => {
       <div className="fixed bottom-5 right-5 z-50 font-['Cairo',sans-serif]">
         <button
           type="button"
-          onClick={() => setViewState('open')}
+          onClick={() => {
+            playCyberRobotClickSound('open');
+            setViewState('open');
+          }}
           aria-label={language === 'ar' ? 'فتح الروبوت البرمجي الذكي' : 'Open Smart Cyber Robot'}
           data-testid="ai-robot-floating-button"
           className="relative group w-16 h-16 rounded-full bg-[#091526] border-2 border-cyan-400/90 shadow-[0_0_28px_rgba(34,211,238,0.55)] hover:shadow-[0_0_38px_rgba(34,211,238,0.85)] flex items-center justify-center transition-all duration-300 transform hover:scale-105 active:scale-95 cursor-pointer"
@@ -432,7 +449,10 @@ export const AiRobotWidget: React.FC = () => {
       >
         <div className="rounded-3xl bg-[#091326]/95 backdrop-blur-2xl border border-cyan-500/45 shadow-[0_10px_40px_rgba(6,182,212,0.3)] px-3.5 py-3 flex items-center justify-between gap-2">
           <div
-            onClick={() => setViewState('open')}
+            onClick={() => {
+              playCyberRobotClickSound('open');
+              setViewState('open');
+            }}
             className="flex items-center gap-2.5 cursor-pointer flex-1 min-w-0"
           >
             <CyberRobotAvatar size="md" isSpeakingOrThinking={isLoading} />
@@ -460,7 +480,10 @@ export const AiRobotWidget: React.FC = () => {
           <div className="flex items-center gap-1 shrink-0">
             <button
               type="button"
-              onClick={() => setVoiceEnabled(!voiceEnabled)}
+              onClick={() => {
+                playCyberRobotClickSound('minimize');
+                setVoiceEnabled(!voiceEnabled);
+              }}
               aria-label={language === 'ar' ? 'تبديل القراءة الصوتية' : 'Toggle voice output'}
               className="p-1.5 rounded-xl text-cyan-400 hover:bg-slate-800/80 transition-colors cursor-pointer"
             >
@@ -468,7 +491,10 @@ export const AiRobotWidget: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setViewState('open')}
+              onClick={() => {
+                playCyberRobotClickSound('open');
+                setViewState('open');
+              }}
               aria-label={language === 'ar' ? 'توسيع نافذة الروبوت' : 'Expand robot window'}
               className="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
             >
@@ -476,7 +502,10 @@ export const AiRobotWidget: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setViewState('closed')}
+              onClick={() => {
+                playCyberRobotClickSound('close');
+                setViewState('closed');
+              }}
               aria-label={language === 'ar' ? 'إغلاق نافذة الروبوت' : 'Close robot window'}
               className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
             >
@@ -555,7 +584,10 @@ export const AiRobotWidget: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setViewState('minimized')}
+              onClick={() => {
+                playCyberRobotClickSound('minimize');
+                setViewState('minimized');
+              }}
               title={language === 'ar' ? 'تصغير للشريط السفلي' : 'Minimize'}
               aria-label={language === 'ar' ? 'تصغير للشريط السفلي' : 'Minimize'}
               className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
@@ -565,7 +597,10 @@ export const AiRobotWidget: React.FC = () => {
 
             <button
               type="button"
-              onClick={() => setViewState('closed')}
+              onClick={() => {
+                playCyberRobotClickSound('close');
+                setViewState('closed');
+              }}
               title={language === 'ar' ? 'إغلاق' : 'Close'}
               aria-label={language === 'ar' ? 'إغلاق' : 'Close'}
               className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
