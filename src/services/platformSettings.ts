@@ -77,18 +77,20 @@ function mergeWithDefaults(rawObj?: Partial<PlatformSettings> | null): PlatformS
   };
 }
 
-subscribeToCatalogCollection<PlatformSettings>(COLLECTION_NAME, (cloudDocs) => {
-  const mainSettings = cloudDocs[0];
-  if (mainSettings && mainSettings.brandNameAr) {
-    const merged = mergeWithDefaults(mainSettings);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-      window.dispatchEvent(new CustomEvent('platform_settings_changed', { detail: merged }));
-    } catch (e) {
-      console.warn('Could not sync cloud settings locally:', e);
+if (typeof window !== 'undefined') {
+  subscribeToCatalogCollection<PlatformSettings>(COLLECTION_NAME, (cloudDocs) => {
+    const mainSettings = cloudDocs.find((d) => d && typeof d.brandNameAr === 'string');
+    if (mainSettings && mainSettings.brandNameAr) {
+      const merged = mergeWithDefaults(mainSettings);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+        window.dispatchEvent(new CustomEvent('platform_settings_changed', { detail: merged }));
+      } catch (e) {
+        console.warn('Could not sync cloud settings locally:', e);
+      }
     }
-  }
-});
+  });
+}
 
 export function getPlatformSettings(): PlatformSettings {
   try {

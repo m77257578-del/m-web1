@@ -23,6 +23,7 @@ import {
 import { ClientProject, getClientProjects } from '../services/clientProjects';
 import { useLanguage } from '../context/LanguageContext';
 import { localizeClientProject } from '../i18n';
+import { ProtectedVideoPlayer } from './ProtectedVideoPlayer';
 
 interface ClientProjectsProps {
   onNavigateToOrder?: () => void;
@@ -311,90 +312,20 @@ export const ClientProjects: React.FC<ClientProjectsProps> = ({ onNavigateToOrde
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-slate-900 border border-teal-500/40 rounded-3xl w-full max-w-4xl overflow-hidden shadow-2xl flex flex-col"
+              className="w-full max-w-4xl overflow-hidden shadow-2xl"
             >
-              <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between text-xs text-slate-300">
-                <span className="font-bold flex items-center gap-2 truncate max-w-md">
-                  <Play className="w-4 h-4 text-red-500 fill-current shrink-0" />
-                  <span className="truncate">{activeVideoTitle}</span>
-                </span>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const elem = document.getElementById('client-video-modal-wrapper');
-                      if (elem) {
-                        if (!document.fullscreenElement) {
-                          elem.requestFullscreen().catch(err => console.error(err));
-                        } else {
-                          document.exitFullscreen().catch(err => console.error(err));
-                        }
-                      }
-                    }}
-                    className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-teal-500/20 text-teal-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer border border-teal-500/30 shadow"
-                  >
-                    <Maximize2 className="w-3.5 h-3.5" />
-                    <span>{t.expandFullscreen}</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setIsPlaying(false);
-                      setActiveVideoUrl(null);
-                    }}
-                    className="p-2 rounded-xl bg-slate-800 hover:bg-red-500/20 hover:text-red-400 text-slate-400 transition-all cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div id="client-video-modal-wrapper" className="aspect-video w-full bg-black relative overflow-hidden group">
-                {activeVideoUrl && (activeVideoUrl.includes('youtube.com') || activeVideoUrl.includes('youtu.be')) ? (
-                  <iframe
-                    src={getEmbedUrl(activeVideoUrl)}
-                    title="Client Project Video Tour"
-                    className="w-full h-full border-0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
-                ) : (
-                  <video
-                    src={activeVideoUrl || ''}
-                    playsInline
-                    autoPlay={isPlaying}
-                    preload="none"
-                    className="w-full h-full object-cover"
-                  />
-                )}
-
-                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end">
-                  <div className="p-3 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center gap-4">
-                    <button
-                      onClick={handleRewind}
-                      className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white transition-all cursor-pointer"
-                      title={t.rewind10s}
-                    >
-                      <RotateCcw className="w-5 h-5" />
-                    </button>
-
-                    <button
-                      onClick={() => setIsPlaying(!isPlaying)}
-                      className="p-3 rounded-full bg-gradient-to-r from-teal-400 to-cyan-400 text-slate-950 transition-all cursor-pointer"
-                    >
-                      {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
-                    </button>
-
-                    <button
-                      onClick={handleForward}
-                      className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white transition-all cursor-pointer"
-                      title={t.forward10s}
-                    >
-                      <RotateCw className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <ProtectedVideoPlayer
+                url={activeVideoUrl}
+                title={activeVideoTitle}
+                badgeLabel="فيديو"
+                backButtonLabel={language === 'ar' ? 'رجوع للمشاريع' : 'Back to Projects'}
+                onCloseModal={() => {
+                  setIsPlaying(false);
+                  setActiveVideoUrl(null);
+                }}
+                footerNote={language === 'ar' ? 'لا يوجد اختبار مرفق بهذا المحتوى' : 'No quiz attached to this content'}
+                showSectionFrame={true}
+              />
             </motion.div>
           </div>
         )}

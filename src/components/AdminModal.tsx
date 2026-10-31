@@ -131,13 +131,14 @@ import {
   AiMonitoredSession,
   AI_MONITOR_EVENT,
 } from '../services/aiChatMonitor';
+import { AdminMediaManager } from './AdminMediaManager';
 
 interface AdminModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type AdminTab = 'brand-settings' | 'ai-monitor' | 'live-chat' | 'payment-methods' | 'orders' | 'demo-platforms' | 'client-projects' | 'articles' | 'projects' | 'applicants' | 'social' | 'security';
+type AdminTab = 'brand-settings' | 'media-placements' | 'ai-monitor' | 'live-chat' | 'payment-methods' | 'orders' | 'demo-platforms' | 'client-projects' | 'articles' | 'projects' | 'applicants' | 'social' | 'security';
 
 export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -927,6 +928,19 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
               </button>
 
               <button
+                data-testid="admin-tab-media-placements"
+                onClick={() => setActiveTab('media-placements')}
+                className={`pb-3 px-3 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'media-placements'
+                    ? 'border-cyan-400 text-cyan-400 font-bold'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Video className="w-3.5 h-3.5 text-rose-400" />
+                <span>نشر الصور والفيديوهات بالأقسام</span>
+              </button>
+
+              <button
                 data-testid="admin-tab-ai-monitor"
                 onClick={() => setActiveTab('ai-monitor')}
                 className={`pb-3 px-3 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap relative ${
@@ -1062,6 +1076,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
 
             {/* Dashboard Content Body */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 text-right">
+
+              {/* TAB: Media Placements (Publish Videos & Photos Across All Sections) */}
+              {activeTab === 'media-placements' && <AdminMediaManager />}
               
               {/* TAB: Brand Settings */}
               {activeTab === 'brand-settings' && (

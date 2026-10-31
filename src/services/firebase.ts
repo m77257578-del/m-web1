@@ -91,7 +91,9 @@ async function testConnection() {
     }
   }
 }
-testConnection();
+if (typeof window !== 'undefined') {
+  testConnection();
+}
 
 // Admin Google Auth Helpers
 export async function signInAdminWithGoogle(): Promise<User | null> {

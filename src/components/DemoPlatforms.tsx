@@ -32,6 +32,7 @@ import {
 import { DemoPlatform, getDemoPlatforms } from '../services/demoPlatforms';
 import { useLanguage } from '../context/LanguageContext';
 import { localizeDemoPlatform } from '../i18n';
+import { ProtectedVideoPlayer } from './ProtectedVideoPlayer';
 
 interface DemoPlatformsProps {
   onSelectPlatformToOrder: (platformTitleAr: string, platformTitleEn: string) => void;
@@ -595,7 +596,7 @@ export const DemoPlatforms: React.FC<DemoPlatformsProps> = ({ onSelectPlatformTo
                 )}
 
                 {previewTab === 'video' && (
-                  <div className="w-full max-w-4xl my-auto flex flex-col items-center justify-center">
+                  <div className="w-full max-w-4xl my-auto px-4 pt-14 flex flex-col items-center justify-center">
                     {(() => {
                       const videoItem = activePreviewPlatform.media.find(m => m.type === 'video' || m.type === 'youtube');
                       if (!videoItem) {
@@ -610,75 +611,15 @@ export const DemoPlatforms: React.FC<DemoPlatformsProps> = ({ onSelectPlatformTo
                       }
 
                       return (
-                        <div id="demo-video-wrapper" className="w-full bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl flex flex-col relative group">
-                          <div className="p-3 bg-slate-950 border-b border-slate-800 flex items-center justify-between text-xs text-slate-300">
-                            <span className="font-bold flex items-center gap-2">
-                              <Film className="w-4 h-4 text-cyan-400" />
-                              <span>{videoItem.title || activePreviewPlatform.title}</span>
-                            </span>
-                            <button
-                              onClick={() => {
-                                const elem = document.getElementById('demo-video-wrapper');
-                                if (elem) {
-                                  if (!document.fullscreenElement) {
-                                    elem.requestFullscreen().catch(err => console.error(err));
-                                  } else {
-                                    document.exitFullscreen().catch(err => console.error(err));
-                                  }
-                                }
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-cyan-500/20 text-cyan-300 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer border border-cyan-500/30 shadow"
-                            >
-                              <Maximize2 className="w-3.5 h-3.5" />
-                              <span>{t.expandFullscreen}</span>
-                            </button>
-                          </div>
-
-                          <div className="aspect-video w-full bg-black relative overflow-hidden group">
-                            {videoItem.type === 'youtube' || videoItem.url.includes('youtube.com') || videoItem.url.includes('youtu.be') ? (
-                              <iframe
-                                src={getEmbedUrl(videoItem.url)}
-                                title={videoItem.title || 'Platform Video'}
-                                className="w-full h-full border-0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                allowFullScreen
-                              />
-                            ) : (
-                              <video
-                                src={videoItem.url}
-                                playsInline
-                                autoPlay={isPlaying}
-                                preload="none"
-                                className="w-full h-full object-cover"
-                              />
-                            )}
-
-                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end">
-                              <div className="p-3 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center gap-4">
-                                <button
-                                  onClick={handleRewind}
-                                  className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white transition-all cursor-pointer"
-                                  title={t.rewind10s}
-                                >
-                                  <RotateCcw className="w-5 h-5" />
-                                </button>
-                                <button
-                                  onClick={() => setIsPlaying(!isPlaying)}
-                                  className="p-3 rounded-full bg-gradient-to-r from-cyan-400 to-teal-400 text-slate-950 transition-all cursor-pointer"
-                                >
-                                  {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current" />}
-                                </button>
-                                <button
-                                  onClick={handleForward}
-                                  className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-white transition-all cursor-pointer"
-                                  title={t.forward10s}
-                                >
-                                  <RotateCw className="w-5 h-5" />
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
+                        <ProtectedVideoPlayer
+                          url={videoItem.url}
+                          title={videoItem.title || activePreviewPlatform.title}
+                          subtitle={activePreviewPlatform.subtitle}
+                          badgeLabel="فيديو"
+                          thumbnailUrl={activePreviewPlatform.thumbnail}
+                          footerNote={activePreviewPlatform.description}
+                          showSectionFrame={true}
+                        />
                       );
                     })()}
                   </div>

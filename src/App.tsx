@@ -36,6 +36,7 @@ import { AiRobotWidget } from './components/AiRobotWidget';
 import { OfflineIndicator } from './components/OfflineIndicator';
 import { SpaceBackground } from './components/SpaceBackground';
 import { Splash3DLoader } from './components/Splash3DLoader';
+import { SectionMediaShowcase } from './components/SectionMediaShowcase';
 import { usePlatformSettings } from './services/platformSettings';
 import { useLanguage } from './context/LanguageContext';
 
@@ -168,10 +169,16 @@ export default function App() {
         <main className="flex-1 pt-16">
           {activeTab === 'all' ? (
             <>
+              {/* Media Published at Top of Home Page */}
+              <SectionMediaShowcase placement="hero-top" className="pt-8 pb-0" />
+
               <Hero
                 onNavigateToOrder={() => navigateToOrder()}
                 onNavigateToPortfolio={navigateToPortfolio}
               />
+
+              {/* Media Published Below Hero on Home Page */}
+              <SectionMediaShowcase placement="hero-bottom" />
 
               {/* Interactive Section Switcher Bar */}
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 mb-4">
@@ -219,6 +226,7 @@ export default function App() {
 
               {/* Complete Stream of Sections */}
               <div id="demo-platforms">
+                <SectionMediaShowcase placement="demo-platforms" />
                 <DemoPlatforms 
                   onSelectPlatformToOrder={(arTitle, enTitle) => {
                     setOrderPlatformAr(arTitle);
@@ -229,26 +237,32 @@ export default function App() {
               </div>
 
               <div id="client-projects">
+                <SectionMediaShowcase placement="client-projects" />
                 <ClientProjects onNavigateToOrder={() => navigateToOrder()} />
               </div>
 
               <div id="payment-methods">
+                <SectionMediaShowcase placement="payment-methods" />
                 <PaymentMethods onSelectPaymentMethod={(method) => navigateToOrder(method)} />
               </div>
 
               <div id="articles">
+                <SectionMediaShowcase placement="articles" />
                 <Articles onNavigateToOrder={(context) => navigateToOrder(context)} />
               </div>
 
               <div id="services">
+                <SectionMediaShowcase placement="services" />
                 <Services onSelectService={(serviceTitle) => navigateToOrder(serviceTitle)} />
               </div>
 
               <div id="portfolio">
+                <SectionMediaShowcase placement="portfolio" />
                 <Portfolio onNavigateToOrder={() => navigateToOrder()} />
               </div>
 
               <div id="why-us">
+                <SectionMediaShowcase placement="why-us" />
                 <WhyUs />
               </div>
 
@@ -257,10 +271,12 @@ export default function App() {
               </div>
 
               <div id="join-us">
+                <SectionMediaShowcase placement="join-us" />
                 <JoinUs />
               </div>
 
               <div id="order-form">
+                <SectionMediaShowcase placement="order-form" />
                 <OrderForm initialService={selectedService} />
               </div>
 
@@ -325,6 +341,7 @@ export default function App() {
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.3 }}
                   >
+                    <SectionMediaShowcase placement="demo-platforms" />
                     <DemoPlatforms 
                       onSelectPlatformToOrder={(arTitle, enTitle) => {
                         setOrderPlatformAr(arTitle);
@@ -343,6 +360,7 @@ export default function App() {
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.3 }}
                   >
+                    <SectionMediaShowcase placement="client-projects" />
                     <ClientProjects onNavigateToOrder={() => navigateToOrder()} />
                   </motion.div>
                 )}
@@ -355,6 +373,7 @@ export default function App() {
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.3 }}
                   >
+                    <SectionMediaShowcase placement="articles" />
                     <Articles onNavigateToOrder={(context) => navigateToOrder(context)} />
                   </motion.div>
                 )}
@@ -367,6 +386,7 @@ export default function App() {
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.3 }}
                   >
+                    <SectionMediaShowcase placement="payment-methods" />
                     <PaymentMethods onSelectPaymentMethod={(method) => navigateToOrder(method)} />
                   </motion.div>
                 )}
@@ -379,6 +399,7 @@ export default function App() {
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.3 }}
                   >
+                    <SectionMediaShowcase placement="services" />
                     <Services onSelectService={(serviceTitle) => navigateToOrder(serviceTitle)} />
                   </motion.div>
                 )}
@@ -391,6 +412,7 @@ export default function App() {
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.3 }}
                   >
+                    <SectionMediaShowcase placement="portfolio" />
                     <Portfolio onNavigateToOrder={() => navigateToOrder()} />
                   </motion.div>
                 )}
@@ -403,6 +425,7 @@ export default function App() {
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.3 }}
                   >
+                    <SectionMediaShowcase placement="why-us" />
                     <WhyUs />
                     <Process />
                     <Faq />
@@ -417,6 +440,7 @@ export default function App() {
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.3 }}
                   >
+                    <SectionMediaShowcase placement="join-us" />
                     <JoinUs />
                   </motion.div>
                 )}
@@ -429,6 +453,7 @@ export default function App() {
                     exit={{ opacity: 0, y: -15 }}
                     transition={{ duration: 0.3 }}
                   >
+                    <SectionMediaShowcase placement="order-form" />
                     <OrderForm initialService={selectedService} />
                   </motion.div>
                 )}
