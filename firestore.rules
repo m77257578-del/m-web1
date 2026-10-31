@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == "aljamd210@gmail.com" && request.auth.token.email_verified == true)
+      );
+    }
+
+    function isValidProject(data) {
+      return data.keys().hasAll(['title', 'description', 'tag', 'image', 'demoUrl', 'createdAt']) &&
+             data.keys().hasOnly(['title', 'description', 'tag', 'image', 'demoUrl', 'createdAt']) &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.description is string && data.description.size() <= 3000 &&
+             data.tag is string && data.tag.size() <= 100 &&
+             data.image is string && data.image.size() <= 500000 &&
+             data.demoUrl is string && data.demoUrl.size() <= 2048 &&
+             data.createdAt == request.time;
+    }
+
+    function isValidOrder(data) {
+      return data.keys().hasAll(['name', 'phone', 'details', 'timestamp']) &&
+             data.keys().hasOnly(['name', 'phone', 'details', 'timestamp']) &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 150 &&
+             data.phone is string && data.phone.size() >= 3 && data.phone.size() <= 40 &&
+             data.details is string && data.details.size() >= 1 && data.details.size() <= 4000 &&
+             data.timestamp == request.time;
+    }
+
+    function isValidCatalogItem(data) {
+      return data.keys().hasAll(['id', 'payload', 'updatedAt']) &&
+             data.keys().hasOnly(['id', 'payload', 'updatedAt']) &&
+             data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.payload is map &&
+             data.updatedAt == request.time;
+    }
+
+    // Admins collection
+    match /admins/{adminUid} {
+      allow get: if isSignedIn() && isValidId(adminUid) && request.auth.uid == adminUid;
+      allow write: if false;
+    }
+
+    // Connection test document
+    match /test/{docId} {
+      allow get: if isValidId(docId);
+      allow write: if false;
+    }
+
+    // Portfolio Projects: Public read, Admin write
+    match /projects/{projectId} {
+      allow get: if isValidId(projectId);
+      allow list: if resource.data.title is string;
+      allow create: if isAdmin() && isValidId(projectId) && isValidProject(incoming());
+      allow update: if isAdmin() && isValidId(projectId) && isValidProject(incoming()) && incoming().createdAt == existing().createdAt;
+      allow delete: if isAdmin() && isValidId(projectId);
+    }
+
+    // Customer Orders (contains PII: phone, name): Public create, Admin-only read/delete
+    match /orders/{orderId} {
+      allow create: if isValidId(orderId) && isValidOrder(incoming());
+      allow get: if isAdmin() && isValidId(orderId);
+      allow list: if isAdmin();
+      allow update: if false;
+      allow delete: if isAdmin() && isValidId(orderId);
+    }
+
+    // Demo Platforms: Public read, Admin write
+    match /demo_platforms/{platformId} {
+      allow get: if isValidId(platformId);
+      allow list: if resource.data.id is string;
+      allow create, update: if isAdmin() && isValidId(platformId) && isValidCatalogItem(incoming());
+      allow delete: if isAdmin() && isValidId(platformId);
+    }
+
+    // Client Projects: Public read, Admin write
+    match /client_projects/{clientProjectId} {
+      allow get: if isValidId(clientProjectId);
+      allow list: if resource.data.id is string;
+      allow create, update: if isAdmin() && isValidId(clientProjectId) && isValidCatalogItem(incoming());
+      allow delete: if isAdmin() && isValidId(clientProjectId);
+    }
+
+    // Articles: Public read, Admin write
+    match /articles/{articleId} {
+      allow get: if isValidId(articleId);
+      allow list: if resource.data.id is string;
+      allow create, update: if isAdmin() && isValidId(articleId) && isValidCatalogItem(incoming());
+      allow delete: if isAdmin() && isValidId(articleId);
+    }
+
+    // Payment Methods: Public read, Admin write
+    match /payment_methods/{methodId} {
+      allow get: if isValidId(methodId);
+      allow list: if resource.data.id is string;
+      allow create, update: if isAdmin() && isValidId(methodId) && isValidCatalogItem(incoming());
+      allow delete: if isAdmin() && isValidId(methodId);
+    }
+
+    // Platform Brand Settings: Public read, Admin write
+    match /settings/{settingId} {
+      allow get: if isValidId(settingId);
+      allow list: if resource.data.id is string;
+      allow create, update: if isAdmin() && isValidId(settingId) && isValidCatalogItem(incoming());
+      allow delete: if isAdmin() && isValidId(settingId);
+    }
+  }
+}

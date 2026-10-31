@@ -1,0 +1,8 @@
+{
+  "name": "M Web | إم ويب لتطوير البرمجيات وحلول الويب",
+  "description": "شركة برمجية متخصصة في تطوير وتصميم مواقع الويب، الأنظمة الإدارية، والمنصات الرقمية المتكاملة والمخصصة بأعلى معايير السرعة والأمان.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

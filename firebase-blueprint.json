@@ -1,0 +1,121 @@
+{
+  "entities": {
+    "Project": {
+      "title": "Project",
+      "description": "معرض المشاريع البرمجية المنفذة",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "اسم المشروع البرمجي",
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "description": "وصف المشروع",
+          "maxLength": 3000
+        },
+        "tag": {
+          "type": "string",
+          "description": "تصنيف المشروع",
+          "maxLength": 100
+        },
+        "image": {
+          "type": "string",
+          "description": "رابط صورة المشروع",
+          "maxLength": 500000
+        },
+        "demoUrl": {
+          "type": "string",
+          "description": "رابط المعاينة الحية",
+          "maxLength": 2048
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "تاريخ إضافة المشروع"
+        }
+      },
+      "required": ["title", "description", "tag", "image", "demoUrl", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "طلبات العملاء الواردة عبر الموقع",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "اسم العميل الكامل",
+          "maxLength": 150
+        },
+        "phone": {
+          "type": "string",
+          "description": "رقم تواصل أو واتساب العميل",
+          "maxLength": 40
+        },
+        "details": {
+          "type": "string",
+          "description": "تفاصيل الطلب والرابط المولد",
+          "maxLength": 4000
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "وقت إرسال الطلب"
+        }
+      },
+      "required": ["name", "phone", "details", "timestamp"]
+    },
+    "CatalogItem": {
+      "title": "CatalogItem",
+      "description": "عنصر محتوى عام للمنصة (منصات المعاينة، أعمال العملاء، المقالات، طرق الدفع، الإعدادات)",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "payload": {
+          "type": "object",
+          "description": "بيانات العنصر الكاملة"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "وقت آخر تحديث"
+        }
+      },
+      "required": ["id", "payload", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "معرض المشاريع البرمجية"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "طلبات العملاء الواردة"
+    },
+    "/demo_platforms/{platformId}": {
+      "schema": "CatalogItem",
+      "description": "منصات المعاينة والتسعير"
+    },
+    "/client_projects/{clientProjectId}": {
+      "schema": "CatalogItem",
+      "description": "مشاريع وأعمال العملاء المنشورة"
+    },
+    "/articles/{articleId}": {
+      "schema": "CatalogItem",
+      "description": "المقالات المنشورة"
+    },
+    "/payment_methods/{methodId}": {
+      "schema": "CatalogItem",
+      "description": "طرق الدفع المعتمدة"
+    },
+    "/settings/{settingId}": {
+      "schema": "CatalogItem",
+      "description": "إعدادات المنصة العامة"
+    }
+  }
+}
