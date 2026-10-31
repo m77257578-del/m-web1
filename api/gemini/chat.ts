@@ -108,14 +108,16 @@ export default async function handler(req: any, res: any) {
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      return res.status(503).json({
+      return res.status(200).json({
+        reply: '',
+        fallback: true,
         error: 'GEMINI_API_KEY_MISSING',
         message: 'مفتاح GEMINI_API_KEY غير مضاف في إعدادات البيئة (Environment Variables) على Vercel.',
       });
     }
 
     const ai = new GoogleGenAI({ apiKey });
-    const modelName = mode === 'fast' ? 'gemini-3.1-flash-lite' : 'gemini-3.8-flash';
+    const modelName = mode === 'fast' ? 'gemini-3.1-flash-lite-preview' : 'gemini-3-flash-preview';
     const contents = buildContentsFromHistory(history, message, imageUrl, imageMimeType);
 
     if (contents.length === 0) {
@@ -141,7 +143,9 @@ export default async function handler(req: any, res: any) {
     });
   } catch (error: any) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    return res.status(500).json({
+    return res.status(200).json({
+      reply: '',
+      fallback: true,
       error: 'GEMINI_API_ERROR',
       message: errMsg,
     });

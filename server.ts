@@ -129,13 +129,15 @@ async function startServer() {
 
       const ai = getGenAIClient();
       if (!ai) {
-        return res.status(503).json({
+        return res.status(200).json({
+          reply: '',
+          fallback: true,
           error: 'GEMINI_API_KEY_MISSING',
           message: 'مفتاح Gemini API غير مضاف حالياً في إعدادات الخادم (Settings > Secrets).',
         });
       }
 
-      const modelName = mode === 'fast' ? 'gemini-3.1-flash-lite' : 'gemini-3.8-flash';
+      const modelName = mode === 'fast' ? 'gemini-3.1-flash-lite-preview' : 'gemini-3-flash-preview';
       const contents = buildContentsFromHistory(history, message, imageUrl, imageMimeType);
 
       if (contents.length === 0) {
@@ -159,8 +161,9 @@ async function startServer() {
       });
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error);
-      console.error('Gemini API Error:', errMsg);
-      return res.status(500).json({
+      return res.status(200).json({
+        reply: '',
+        fallback: true,
         error: 'GEMINI_API_ERROR',
         message: errMsg,
       });
@@ -175,7 +178,7 @@ async function startServer() {
     });
   } else {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: 'spa',
     });
     app.use(vite.middlewares);
