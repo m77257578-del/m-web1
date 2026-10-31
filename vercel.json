@@ -37,7 +37,7 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/((?!api/|assets/|pwa-|apple-touch-icon|icon\\.svg|favicon\\.ico|manifest\\.webmanifest|sw\\.js|workbox-).*)",
+      "source": "/((?!api/|assets/|data\\.json|pwa-|apple-touch-icon|icon\\.svg|favicon\\.ico|manifest\\.webmanifest|sw\\.js|workbox-).*)",
       "destination": "/index.html"
     }
   ]

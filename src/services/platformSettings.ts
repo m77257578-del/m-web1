@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { syncCatalogDocToFirestore, subscribeToCatalogCollection } from './firebase';
+import { syncCatalogDocToFirestore, subscribeToSettingsDoc } from './firebase';
+import { syncSectionToDataJson } from './dataJsonService';
 import {
   PaymentGatewaySettings,
   DEFAULT_PAYMENT_GATEWAY_SETTINGS,
@@ -78,18 +79,31 @@ function mergeWithDefaults(rawObj?: Partial<PlatformSettings> | null): PlatformS
 }
 
 if (typeof window !== 'undefined') {
-  subscribeToCatalogCollection<PlatformSettings>(COLLECTION_NAME, (cloudDocs) => {
-    const mainSettings = cloudDocs.find((d) => d && typeof d.brandNameAr === 'string');
-    if (mainSettings && mainSettings.brandNameAr) {
-      const merged = mergeWithDefaults(mainSettings);
+  subscribeToSettingsDoc<PlatformSettings>(
+    'main',
+    (mainSettings) => {
+      if (mainSettings && typeof mainSettings.brandNameAr === 'string') {
+        const merged = mergeWithDefaults(mainSettings);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+          window.dispatchEvent(new CustomEvent('platform_settings_changed', { detail: merged }));
+        } catch (e) {
+          console.warn('Could not sync cloud settings locally:', e);
+        }
+      }
+    },
+    () => {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-        window.dispatchEvent(new CustomEvent('platform_settings_changed', { detail: merged }));
-      } catch (e) {
-        console.warn('Could not sync cloud settings locally:', e);
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = mergeWithDefaults(JSON.parse(raw));
+          syncCatalogDocToFirestore(COLLECTION_NAME, 'main', parsed).catch(() => {});
+        }
+      } catch {
+        // ignore
       }
     }
-  });
+  );
 }
 
 export function getPlatformSettings(): PlatformSettings {
@@ -124,6 +138,7 @@ export function savePlatformSettings(settings: Partial<PlatformSettings>): Platf
     syncCatalogDocToFirestore(COLLECTION_NAME, 'main', updated).catch((e) =>
       console.warn('Firestore settings sync notice:', e)
     );
+    syncSectionToDataJson('platformSettings', updated).catch(() => {});
   } catch (e) {
     console.warn('Could not save platform settings:', e);
   }
@@ -132,12 +147,13 @@ export function savePlatformSettings(settings: Partial<PlatformSettings>): Platf
 
 export function resetPlatformSettings(): PlatformSettings {
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_PLATFORM_SETTINGS));
     document.title = `${DEFAULT_PLATFORM_SETTINGS.brandNameEn} | ${DEFAULT_PLATFORM_SETTINGS.brandNameAr} لتطوير البرمجيات وحلول الويب`;
     window.dispatchEvent(
       new CustomEvent('platform_settings_changed', { detail: DEFAULT_PLATFORM_SETTINGS })
     );
     syncCatalogDocToFirestore(COLLECTION_NAME, 'main', DEFAULT_PLATFORM_SETTINGS).catch(() => {});
+    syncSectionToDataJson('platformSettings', DEFAULT_PLATFORM_SETTINGS).catch(() => {});
   } catch (e) {
     console.warn('Could not reset platform settings:', e);
   }
@@ -151,15 +167,17 @@ export function usePlatformSettings(): PlatformSettings {
     const handleSettingsChanged = (e: Event) => {
       const customEvt = e as CustomEvent<PlatformSettings>;
       if (customEvt.detail) {
-        setSettings(customEvt.detail);
+        setSettings(mergeWithDefaults(customEvt.detail));
       } else {
         setSettings(getPlatformSettings());
       }
     };
 
     window.addEventListener('platform_settings_changed', handleSettingsChanged);
+    window.addEventListener('storage', handleSettingsChanged);
     return () => {
       window.removeEventListener('platform_settings_changed', handleSettingsChanged);
+      window.removeEventListener('storage', handleSettingsChanged);
     };
   }, []);
 

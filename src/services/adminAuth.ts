@@ -1,6 +1,21 @@
+import { syncCatalogDocToFirestore, subscribeToSettingsDoc } from './firebase';
+import { syncSectionToDataJson } from './dataJsonService';
+
 const ADMIN_PASSCODE_KEY = 'webrex_admin_passcode';
 const ADMIN_SESSION_KEY = 'webrex_admin_session';
 const DEFAULT_PASSCODE = '100100';
+
+if (typeof window !== 'undefined') {
+  subscribeToSettingsDoc<{ passcode: string }>('admin_passcode', (data) => {
+    if (data && typeof data.passcode === 'string' && data.passcode.trim().length >= 4) {
+      try {
+        localStorage.setItem(ADMIN_PASSCODE_KEY, data.passcode.trim());
+      } catch {
+        // ignore
+      }
+    }
+  });
+}
 
 export function getAdminPasscode(): string {
   try {
@@ -15,10 +30,13 @@ export function setAdminPasscode(newCode: string): { success: boolean; error?: s
   if (!newCode || newCode.trim().length < 4) {
     return { success: false, error: 'يجب أن يتكون كود الدخول من 4 خانات على الأقل.' };
   }
+  const clean = newCode.trim();
   try {
-    localStorage.setItem(ADMIN_PASSCODE_KEY, newCode.trim());
+    localStorage.setItem(ADMIN_PASSCODE_KEY, clean);
+    syncCatalogDocToFirestore('settings', 'admin_passcode', { passcode: clean }).catch(() => {});
+    syncSectionToDataJson('adminPasscode', clean).catch(() => {});
     return { success: true };
-  } catch (e) {
+  } catch {
     return { success: false, error: 'فشل في حفظ الكود الجديد محلياً.' };
   }
 }

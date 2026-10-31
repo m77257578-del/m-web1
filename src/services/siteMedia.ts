@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { syncCatalogDocToFirestore, subscribeToCatalogCollection } from './firebase';
+import { syncCatalogDocToFirestore, subscribeToSettingsDoc } from './firebase';
+import { syncSectionToDataJson } from './dataJsonService';
 
 export type MediaPlacementLocation =
   | 'hero-top'
@@ -111,17 +112,11 @@ const COLLECTION_NAME = 'settings';
 const DOC_ID = 'site_media_posts';
 export const SITE_MEDIA_UPDATED_EVENT = 'mweb_site_media_changed';
 
-/**
- * Extracts a clean 11-character YouTube video ID from any YouTube URL format
- * (watch?v=, youtu.be/, embed/, shorts/, youtube-nocookie.com/embed/) and
- * strips all share/tracking parameters (?si=..., &feature=share, etc.).
- */
 export function extractYouTubeVideoId(rawUrl: string): string | null {
   if (!rawUrl || typeof rawUrl !== 'string') return null;
   const trimmed = rawUrl.trim();
   if (!trimmed) return null;
 
-  // Direct 11-char ID if passed directly
   if (/^[a-zA-Z0-9_-]{11}$/.test(trimmed)) {
     return trimmed;
   }
@@ -148,7 +143,9 @@ export function extractYouTubeVideoId(rawUrl: string): string | null {
       }
 
       const pathParts = parsed.pathname.split('/').filter(Boolean);
-      const embedIdx = pathParts.findIndex((p) => p === 'embed' || p === 'shorts' || p === 'v' || p === 'live');
+      const embedIdx = pathParts.findIndex(
+        (p) => p === 'embed' || p === 'shorts' || p === 'v' || p === 'live'
+      );
       if (embedIdx !== -1 && pathParts[embedIdx + 1]) {
         const id = pathParts[embedIdx + 1];
         return /^[a-zA-Z0-9_-]{6,20}$/.test(id) ? id : null;
@@ -168,12 +165,6 @@ export function isYouTubeUrl(url: string): boolean {
   return extractYouTubeVideoId(url) !== null;
 }
 
-/**
- * Builds a privacy-hardened, share-link-hidden YouTube embed URL.
- * Disables native controls, related external videos, fullscreen button,
- * annotations, and keyboard shortcuts so the custom overlay handles playback
- * and hides all YouTube share/channel links.
- */
 export function buildProtectedYouTubeEmbedUrl(url: string, autoplay = false): string {
   const videoId = extractYouTubeVideoId(url);
   if (!videoId) return url;
@@ -224,17 +215,28 @@ interface CloudSiteMediaContainer {
 }
 
 if (typeof window !== 'undefined') {
-  subscribeToCatalogCollection<CloudSiteMediaContainer>(COLLECTION_NAME, (cloudDocs) => {
-    const mediaDoc = cloudDocs.find((d) => d && d.isSiteMediaContainer && Array.isArray(d.items));
-    if (mediaDoc) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(mediaDoc.items));
-        window.dispatchEvent(new CustomEvent(SITE_MEDIA_UPDATED_EVENT, { detail: mediaDoc.items }));
-      } catch (e) {
-        console.warn('Could not sync cloud site media locally:', e);
+  subscribeToSettingsDoc<CloudSiteMediaContainer>(
+    DOC_ID,
+    (mediaDoc) => {
+      if (mediaDoc && Array.isArray(mediaDoc.items)) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(mediaDoc.items));
+          window.dispatchEvent(new CustomEvent(SITE_MEDIA_UPDATED_EVENT, { detail: mediaDoc.items }));
+        } catch (e) {
+          console.warn('Could not sync cloud site media locally:', e);
+        }
+      }
+    },
+    () => {
+      const localItems = getSiteMediaItems();
+      if (localItems.length > 0) {
+        syncCatalogDocToFirestore(COLLECTION_NAME, DOC_ID, {
+          isSiteMediaContainer: true,
+          items: localItems,
+        }).catch(() => {});
       }
     }
-  });
+  );
 }
 
 export function getSiteMediaItems(): SiteMediaItem[] {
@@ -257,6 +259,7 @@ export function saveSiteMediaItems(items: SiteMediaItem[]): SiteMediaItem[] {
       isSiteMediaContainer: true,
       items,
     }).catch((e) => console.warn('Firestore site media sync notice:', e));
+    syncSectionToDataJson('siteMedia', items).catch(() => {});
   } catch (e) {
     console.warn('Could not save site media items:', e);
   }

@@ -46,7 +46,8 @@ import {
   Send,
   Paperclip,
   Download,
-  CreditCard
+  CreditCard,
+  Database
 } from 'lucide-react';
 import { 
   getAdminPasscode, 
@@ -132,13 +133,23 @@ import {
   AI_MONITOR_EVENT,
 } from '../services/aiChatMonitor';
 import { AdminMediaManager } from './AdminMediaManager';
+import { AdminMysqlBridgePanel } from './AdminMysqlBridgePanel';
+import {
+  pushAllLocalStateToDataJsonAndCloud,
+  syncFirebaseWithMySqlBridge,
+  downloadDataJsonBackup,
+  downloadMySqlDatabaseDump,
+  importDataJsonContent,
+  DATA_JSON_SYNC_EVENT,
+} from '../services/dataJsonService';
+import { compressImageFileToDataUrl } from '../utils/imageCompressor';
 
 interface AdminModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type AdminTab = 'brand-settings' | 'media-placements' | 'ai-monitor' | 'live-chat' | 'payment-methods' | 'orders' | 'demo-platforms' | 'client-projects' | 'articles' | 'projects' | 'applicants' | 'social' | 'security';
+type AdminTab = 'brand-settings' | 'mysql-bridge' | 'media-placements' | 'ai-monitor' | 'live-chat' | 'payment-methods' | 'orders' | 'demo-platforms' | 'client-projects' | 'articles' | 'projects' | 'applicants' | 'social' | 'security';
 
 export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -150,6 +161,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
   // Platform Brand Settings state
   const [brandForm, setBrandForm] = useState<PlatformSettings>(getPlatformSettings);
   const [brandSavedMsg, setBrandSavedMsg] = useState<string | null>(null);
+  const [isSyncingDataJson, setIsSyncingDataJson] = useState(false);
+  const [dataJsonSyncNotice, setDataJsonSyncNotice] = useState<string | null>(null);
+  const dataJsonImportRef = useRef<HTMLInputElement>(null);
 
   // Live Chat state
   const [chatThreads, setChatThreads] = useState<ChatThread[]>([]);
@@ -281,8 +295,13 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
       setAiSessions(monitored);
     };
 
+    const handleDataJsonSync = () => {
+      refreshData();
+    };
+
     window.addEventListener('live_chat_updated', handleChatUpdate);
     window.addEventListener(AI_MONITOR_EVENT, handleAiMonitorUpdate);
+    window.addEventListener(DATA_JSON_SYNC_EVENT, handleDataJsonSync);
     const unsubAuth = onAdminAuthStateChange((user) => {
       setCloudUserEmail(user?.email || null);
       if (user?.email === 'aljamd210@gmail.com') {
@@ -295,6 +314,7 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     return () => {
       window.removeEventListener('live_chat_updated', handleChatUpdate);
       window.removeEventListener(AI_MONITOR_EVENT, handleAiMonitorUpdate);
+      window.removeEventListener(DATA_JSON_SYNC_EVENT, handleDataJsonSync);
       unsubAuth();
       unsubOrders();
     };
@@ -376,10 +396,22 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
     }
   };
 
-  // Local Device File Readers
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
+  // Local Device File Readers with automatic mobile image compression
+  const handleFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    callback: (base64: string) => void
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.type.startsWith('image/')) {
+      try {
+        const compressed = await compressImageFileToDataUrl(file);
+        callback(compressed);
+        return;
+      } catch {
+        // fallback to FileReader
+      }
+    }
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {
@@ -797,30 +829,82 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {isAuthenticated && (
               <>
                 <button
                   type="button"
+                  data-testid="sync-data-json-btn"
+                  disabled={isSyncingDataJson}
                   onClick={async () => {
+                    setIsSyncingDataJson(true);
                     try {
-                      await signInAdminWithGoogle();
-                    } catch (err) {
-                      console.warn('Google sign-in cancelled or failed:', err);
+                      await syncFirebaseWithMySqlBridge('bidirectional');
+                      setDataJsonSyncNotice('تمت مزامنة Firebase و MySQL وملف data.json بين جميع الأجهزة بنجاح ✓');
+                      setTimeout(() => setDataJsonSyncNotice(null), 4000);
+                    } finally {
+                      setIsSyncingDataJson(false);
                     }
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
-                    cloudUserEmail
-                      ? 'bg-emerald-950/70 border-emerald-700/70 text-emerald-300'
-                      : 'bg-cyan-950/70 hover:bg-cyan-900/70 border-cyan-700/60 text-cyan-300'
-                  }`}
-                  title="ربط جلسة قاعدة البيانات السحابية Firestore"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border bg-emerald-950/80 hover:bg-emerald-900/80 border-emerald-500/60 text-emerald-300 text-xs font-bold transition-colors cursor-pointer"
+                  title="حفظ ومزامنة جميع التعديلات بين Firebase و MySQL وملف data.json لجميع الهواتف"
                 >
-                  <Globe className="w-3.5 h-3.5" />
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncingDataJson ? 'animate-spin' : ''}`} />
                   <span>
-                    {cloudUserEmail ? `قاعدة البيانات السحابية متصلة (${cloudUserEmail})` : 'تفعيل المزامنة السحابية (Google)'}
+                    {isSyncingDataJson ? 'جاري مزامنة Firebase & MySQL...' : 'مزامنة Firebase ↔ MySQL'}
                   </span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={downloadMySqlDatabaseDump}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border bg-slate-900 hover:bg-slate-800 border-amber-500/40 text-amber-300 text-xs font-bold transition-colors cursor-pointer"
+                  title="تحميل قاعدة بيانات MySQL المربوطة بـ Firebase (database.sql)"
+                >
+                  <Database className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">database.sql</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={downloadDataJsonBackup}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border bg-slate-900 hover:bg-slate-800 border-cyan-500/40 text-cyan-300 text-xs font-bold transition-colors cursor-pointer"
+                  title="تحميل ملف data.json"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">data.json</span>
+                </button>
+
+                <label
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border bg-slate-900 hover:bg-slate-800 border-indigo-500/40 text-indigo-300 text-xs font-bold transition-colors cursor-pointer"
+                  title="استيراد ورفع ملف data.json"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">استيراد</span>
+                  <input
+                    ref={dataJsonImportRef}
+                    type="file"
+                    accept=".json,application/json"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      const reader = new FileReader();
+                      reader.onload = async () => {
+                        if (typeof reader.result === 'string') {
+                          const res = await importDataJsonContent(reader.result);
+                          if (res.ok) {
+                            refreshData();
+                            setDataJsonSyncNotice('تم استيراد وتطبيق ملف data.json ومزامنته لجميع الأجهزة بنجاح!');
+                            setTimeout(() => setDataJsonSyncNotice(null), 4000);
+                          }
+                        }
+                      };
+                      reader.readAsText(file);
+                    }}
+                  />
+                </label>
+
                 <button
                   onClick={handleLogout}
                   title="تسجيل الخروج"
@@ -839,6 +923,18 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
             </button>
           </div>
         </div>
+        {dataJsonSyncNotice && (
+          <div
+            data-testid="data-json-sync-notice"
+            className="px-6 py-2.5 bg-emerald-950/90 border-b border-emerald-700/70 text-emerald-300 text-xs font-bold flex items-center justify-between shrink-0"
+          >
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{dataJsonSyncNotice}</span>
+            </div>
+            <span className="text-[10px] font-mono text-emerald-400">data.json + Cloud Firestore Synced</span>
+          </div>
+        )}
 
         {/* Not Authenticated: Passcode Screen */}
         {!isAuthenticated ? (
@@ -925,6 +1021,19 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
               >
                 <Building2 className="w-3.5 h-3.5 text-cyan-400" />
                 <span>إعدادات اسم المنصة والهوية</span>
+              </button>
+
+              <button
+                data-testid="admin-tab-mysql-bridge"
+                onClick={() => setActiveTab('mysql-bridge')}
+                className={`pb-3 px-3 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  activeTab === 'mysql-bridge'
+                    ? 'border-cyan-400 text-cyan-400 font-bold'
+                    : 'border-transparent text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Database className="w-3.5 h-3.5 text-amber-400" />
+                <span>ربط Firebase بـ MySQL</span>
               </button>
 
               <button
@@ -1076,6 +1185,9 @@ export const AdminModal: React.FC<AdminModalProps> = ({ isOpen, onClose }) => {
 
             {/* Dashboard Content Body */}
             <div className="p-6 overflow-y-auto space-y-6 flex-1 text-right">
+
+              {/* TAB: Firebase <-> MySQL Relational Database Bridge */}
+              {activeTab === 'mysql-bridge' && <AdminMysqlBridgePanel />}
 
               {/* TAB: Media Placements (Publish Videos & Photos Across All Sections) */}
               {activeTab === 'media-placements' && <AdminMediaManager />}

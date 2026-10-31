@@ -3,6 +3,7 @@ import {
   deleteCatalogDocFromFirestore,
   subscribeToCatalogCollection,
 } from './firebase';
+import { syncSectionToDataJson } from './dataJsonService';
 
 export interface Article {
   id: string;
@@ -35,7 +36,8 @@ const LEGACY_MOCK_ARTICLE_IDS = new Set([
 
 export const DEFAULT_ARTICLES: Article[] = [];
 
-subscribeToCatalogCollection<Article>(COLLECTION_NAME, (cloudItems) => {
+subscribeToCatalogCollection<Article>(COLLECTION_NAME, (cloudItems, isEmpty) => {
+  if (isEmpty) return;
   const cleaned = cloudItems.filter((a) => a && !LEGACY_MOCK_ARTICLE_IDS.has(a.id));
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
@@ -68,6 +70,7 @@ export const saveArticles = (articles: Article[]): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(articles));
     window.dispatchEvent(new Event('storage'));
+    syncSectionToDataJson('articles', articles).catch(() => {});
   } catch (err) {
     console.error('Error saving articles to localStorage:', err);
   }
@@ -117,7 +120,6 @@ export const resetArticles = (): Article[] => {
   current.forEach((a) => {
     deleteCatalogDocFromFirestore(COLLECTION_NAME, a.id).catch(() => {});
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-  window.dispatchEvent(new Event('storage'));
+  saveArticles([]);
   return [];
 };

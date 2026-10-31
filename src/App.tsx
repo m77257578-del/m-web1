@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   Sparkles, 
@@ -38,11 +38,17 @@ import { SpaceBackground } from './components/SpaceBackground';
 import { Splash3DLoader } from './components/Splash3DLoader';
 import { SectionMediaShowcase } from './components/SectionMediaShowcase';
 import { usePlatformSettings } from './services/platformSettings';
+import { initDataJsonRealtimeSync } from './services/dataJsonService';
 import { useLanguage } from './context/LanguageContext';
 
 export default function App() {
   const settings = usePlatformSettings();
   const { t, language } = useLanguage();
+
+  useEffect(() => {
+    initDataJsonRealtimeSync();
+  }, []);
+
   const [splashCompleted, setSplashCompleted] = useState(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);

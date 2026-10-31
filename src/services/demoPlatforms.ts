@@ -3,6 +3,7 @@ import {
   deleteCatalogDocFromFirestore,
   subscribeToCatalogCollection,
 } from './firebase';
+import { syncSectionToDataJson } from './dataJsonService';
 
 export interface PlatformMedia {
   id: string;
@@ -56,12 +57,12 @@ const LEGACY_MOCK_IDS = new Set([
 
 export const DEFAULT_DEMO_PLATFORMS: DemoPlatform[] = [];
 
-let cachedPlatforms: DemoPlatform[] | null = null;
-
 // Subscribe to cloud Firestore updates and sync into local cache
-subscribeToCatalogCollection<DemoPlatform>(COLLECTION_NAME, (cloudItems) => {
+subscribeToCatalogCollection<DemoPlatform>(COLLECTION_NAME, (cloudItems, isEmpty) => {
+  if (isEmpty) {
+    return;
+  }
   const cleaned = cloudItems.filter((p) => p && !LEGACY_MOCK_IDS.has(p.id));
-  cachedPlatforms = cleaned;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
     window.dispatchEvent(new Event('storage'));
@@ -71,24 +72,20 @@ subscribeToCatalogCollection<DemoPlatform>(COLLECTION_NAME, (cloudItems) => {
 });
 
 export const getDemoPlatforms = (): DemoPlatform[] => {
-  if (cachedPlatforms) return cachedPlatforms;
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) {
-      cachedPlatforms = [];
       return [];
     }
     const parsed = JSON.parse(data);
     if (!Array.isArray(parsed)) {
-      cachedPlatforms = [];
       return [];
     }
     const cleaned = parsed.filter((p: DemoPlatform) => p && !LEGACY_MOCK_IDS.has(p.id));
     if (cleaned.length !== parsed.length) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
     }
-    cachedPlatforms = cleaned;
-    return cachedPlatforms;
+    return cleaned;
   } catch (err) {
     console.error('Error reading demo platforms from localStorage:', err);
     return [];
@@ -96,10 +93,10 @@ export const getDemoPlatforms = (): DemoPlatform[] => {
 };
 
 export const saveDemoPlatforms = (platforms: DemoPlatform[]): void => {
-  cachedPlatforms = platforms;
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(platforms));
     window.dispatchEvent(new Event('storage'));
+    syncSectionToDataJson('demoPlatforms', platforms).catch(() => {});
   } catch (err) {
     console.error('Error saving demo platforms to localStorage:', err);
   }
@@ -148,8 +145,6 @@ export const resetDemoPlatforms = (): DemoPlatform[] => {
   current.forEach((p) => {
     deleteCatalogDocFromFirestore(COLLECTION_NAME, p.id).catch(() => {});
   });
-  cachedPlatforms = [];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-  window.dispatchEvent(new Event('storage'));
+  saveDemoPlatforms([]);
   return [];
 };

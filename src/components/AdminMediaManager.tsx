@@ -24,6 +24,7 @@ import {
   SITE_MEDIA_UPDATED_EVENT,
 } from '../services/siteMedia';
 import { ProtectedVideoPlayer } from './ProtectedVideoPlayer';
+import { compressImageFileToDataUrl } from '../utils/imageCompressor';
 
 export const AdminMediaManager: React.FC = () => {
   const [items, setItems] = useState<SiteMediaItem[]>(getSiteMediaItems);
@@ -57,12 +58,21 @@ export const AdminMediaManager: React.FC = () => {
     setTimeout(() => setNotice(null), 3500);
   };
 
-  const handleFileUpload = (
+  const handleFileUpload = async (
     e: React.ChangeEvent<HTMLInputElement>,
     onResult: (base64: string) => void
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.type.startsWith('image/')) {
+      try {
+        const compressed = await compressImageFileToDataUrl(file);
+        onResult(compressed);
+        return;
+      } catch {
+        // fallback to standard FileReader
+      }
+    }
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === 'string') {

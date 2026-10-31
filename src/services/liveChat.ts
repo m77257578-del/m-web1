@@ -1,3 +1,6 @@
+import { syncCatalogDocToFirestore, subscribeToSettingsDoc } from './firebase';
+import { syncSectionToDataJson } from './dataJsonService';
+
 export interface ChatAttachment {
   name: string;
   type: 'image' | 'file';
@@ -27,6 +30,19 @@ export interface ChatThread {
 
 const STORAGE_KEY = 'mweb_live_chat_threads';
 const VISITOR_SESSION_KEY = 'mweb_chat_visitor_id';
+
+if (typeof window !== 'undefined') {
+  subscribeToSettingsDoc<{ threads: ChatThread[] }>('live_chat_threads', (data) => {
+    if (data && Array.isArray(data.threads)) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data.threads));
+        window.dispatchEvent(new CustomEvent('live_chat_updated'));
+      } catch {
+        // ignore
+      }
+    }
+  });
+}
 
 // Helper to get or create unique visitor session ID for the floating widget
 export function getVisitorSessionId(): string {
@@ -58,6 +74,8 @@ export function saveChatThreads(threads: ChatThread[]): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(threads));
     window.dispatchEvent(new CustomEvent('live_chat_updated'));
+    syncCatalogDocToFirestore('settings', 'live_chat_threads', { threads }).catch(() => {});
+    syncSectionToDataJson('liveChatThreads', threads).catch(() => {});
   } catch (e) {
     console.warn('Could not save chat threads:', e);
   }
@@ -82,14 +100,15 @@ export function sendCustomerMessage(
   const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const isoTime = new Date().toISOString();
 
-  const lastText = text.trim() || (attachment ? `[مرفق: ${attachment.type === 'image' ? 'صورة' : 'ملف'}]` : '');
+  const lastText =
+    text.trim() || (attachment ? `[مرفق: ${attachment.type === 'image' ? 'صورة' : 'ملف'}]` : '');
 
   const newMsg: ChatMessage = {
     id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
     sender: 'customer',
     senderName: customerName,
     text: text.trim(),
-    attachment,
+    ...(attachment ? { attachment } : {}),
     timestamp: nowTime,
   };
 
@@ -126,7 +145,6 @@ export function sendCustomerMessage(
     thread.unreadByAdmin = true;
     thread.messages.push(newMsg);
 
-    // Re-order thread to top
     const idx = threads.findIndex((t) => t.id === threadId);
     if (idx > 0) {
       threads.splice(idx, 1);
@@ -140,8 +158,8 @@ export function sendCustomerMessage(
 
 // Send reply from Admin in Admin Panel
 export function sendAdminReply(
-  threadId: string, 
-  text: string, 
+  threadId: string,
+  text: string,
   attachment?: ChatAttachment
 ): ChatThread | null {
   const threads = getAllChatThreads();
@@ -151,14 +169,15 @@ export function sendAdminReply(
   const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const isoTime = new Date().toISOString();
 
-  const lastText = text.trim() || (attachment ? `[مرفق: ${attachment.type === 'image' ? 'صورة' : 'ملف'}]` : '');
+  const lastText =
+    text.trim() || (attachment ? `[مرفق: ${attachment.type === 'image' ? 'صورة' : 'ملف'}]` : '');
 
   const adminMsg: ChatMessage = {
     id: 'msg-' + Date.now() + '-' + Math.random().toString(36).substring(2, 5),
     sender: 'admin',
     senderName: 'خدمة العملاء (الدعم الفني)',
     text: text.trim(),
-    attachment,
+    ...(attachment ? { attachment } : {}),
     timestamp: nowTime,
   };
 

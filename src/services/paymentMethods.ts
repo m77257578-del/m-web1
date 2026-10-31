@@ -3,6 +3,7 @@ import {
   deleteCatalogDocFromFirestore,
   subscribeToCatalogCollection,
 } from './firebase';
+import { syncSectionToDataJson } from './dataJsonService';
 
 export interface PaymentMethodItem {
   id: string;
@@ -182,6 +183,7 @@ export function savePaymentMethods(methods: PaymentMethodItem[]): void {
     methods.forEach((m) => {
       syncCatalogDocToFirestore(COLLECTION_NAME, m.id, m).catch(() => {});
     });
+    syncSectionToDataJson('paymentMethods', methods).catch(() => {});
   } catch (e) {
     console.error('Failed to save payment methods:', e);
   }
@@ -215,11 +217,7 @@ export function deletePaymentMethod(id: string): void {
 
 export function resetPaymentMethods(): PaymentMethodItem[] {
   try {
-    localStorage.removeItem(STORAGE_KEY);
-    window.dispatchEvent(new CustomEvent(EVENT_NAME, { detail: DEFAULT_PAYMENT_METHODS }));
-    DEFAULT_PAYMENT_METHODS.forEach((m) => {
-      syncCatalogDocToFirestore(COLLECTION_NAME, m.id, m).catch(() => {});
-    });
+    savePaymentMethods(DEFAULT_PAYMENT_METHODS);
   } catch (e) {
     console.error(e);
   }

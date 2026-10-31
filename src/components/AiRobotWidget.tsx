@@ -130,7 +130,7 @@ export const AiRobotWidget: React.FC = () => {
 
   const [viewState, setViewState] = useState<'closed' | 'minimized' | 'open'>('closed');
   const [voiceEnabled, setVoiceEnabled] = useState<boolean>(true);
-  const [taskMode, setTaskMode] = useState<RobotTaskMode>('general');
+  const [taskMode] = useState<RobotTaskMode>('fast');
   const [inputValue, setInputValue] = useState('');
   const [attachedImage, setAttachedImage] = useState<{
     url: string;
@@ -610,36 +610,7 @@ export const AiRobotWidget: React.FC = () => {
           </div>
         </div>
 
-        {/* Speed / Model Mode Selector Bar */}
-        <div className="px-4 py-1.5 bg-[#070e1c] border-b border-slate-800/80 flex items-center justify-between text-[11px]">
-          <span className="text-slate-400 font-semibold">
-            {language === 'ar' ? 'نمط معالجة الذكاء الاصطناعي:' : 'AI Processing Mode:'}
-          </span>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setTaskMode('general')}
-              className={`px-2.5 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
-                taskMode === 'general'
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/50'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {language === 'ar' ? 'ذكي شامل (3.8 Flash)' : 'Smart (3.8 Flash)'}
-            </button>
-            <button
-              type="button"
-              onClick={() => setTaskMode('fast')}
-              className={`px-2.5 py-0.5 rounded-lg font-bold transition-all cursor-pointer ${
-                taskMode === 'fast'
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50'
-                  : 'text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {language === 'ar' ? 'فائق السرعة ⚡ (Lite)' : 'Ultra Fast ⚡ (Lite)'}
-            </button>
-          </div>
-        </div>
+
 
         {/* Scrollable Messages Area */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[290px] max-h-[48vh] bg-[#070d19]/95">

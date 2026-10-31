@@ -1,4 +1,6 @@
 import { RobotChatTurn } from '../utils/aiRobotHelper';
+import { syncCatalogDocToFirestore, subscribeToSettingsDoc } from './firebase';
+import { syncSectionToDataJson } from './dataJsonService';
 
 export interface AiMonitoredSession {
   sessionId: string;
@@ -14,7 +16,22 @@ const STORAGE_KEY = 'mweb_ai_monitored_sessions_v1';
 const VISITOR_AI_SESSION_KEY = 'mweb_ai_visitor_session_id';
 export const AI_MONITOR_EVENT = 'mweb_ai_monitor_updated';
 
-export function getOrCreateAiVisitorSessionId(storage?: Pick<Storage, 'getItem' | 'setItem'>): string {
+if (typeof window !== 'undefined') {
+  subscribeToSettingsDoc<{ sessions: AiMonitoredSession[] }>('ai_monitored_sessions', (data) => {
+    if (data && Array.isArray(data.sessions)) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data.sessions));
+        window.dispatchEvent(new CustomEvent(AI_MONITOR_EVENT, { detail: data.sessions }));
+      } catch {
+        // ignore
+      }
+    }
+  });
+}
+
+export function getOrCreateAiVisitorSessionId(
+  storage?: Pick<Storage, 'getItem' | 'setItem'>
+): string {
   const store = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
   if (!store) return 'ai-visitor-default';
   try {
@@ -55,9 +72,14 @@ export function saveAiMonitoredSessions(
   const store = storage || (typeof localStorage !== 'undefined' ? localStorage : null);
   if (!store) return;
   try {
-    store.setItem(STORAGE_KEY, JSON.stringify(sessions.slice(0, 50)));
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent(AI_MONITOR_EVENT, { detail: sessions }));
+    const trimmed = sessions.slice(0, 50);
+    store.setItem(STORAGE_KEY, JSON.stringify(trimmed));
+    if (!storage && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent(AI_MONITOR_EVENT, { detail: trimmed }));
+      syncCatalogDocToFirestore('settings', 'ai_monitored_sessions', { sessions: trimmed }).catch(
+        () => {}
+      );
+      syncSectionToDataJson('aiMonitoredSessions', trimmed).catch(() => {});
     }
   } catch (e) {
     console.warn('Could not save AI monitored sessions:', e);

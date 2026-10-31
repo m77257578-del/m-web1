@@ -3,6 +3,7 @@ import {
   deleteCatalogDocFromFirestore,
   subscribeToCatalogCollection,
 } from './firebase';
+import { syncSectionToDataJson } from './dataJsonService';
 
 export interface ClientProject {
   id: string;
@@ -39,7 +40,8 @@ const LEGACY_MOCK_CLIENT_IDS = new Set([
 
 export const DEFAULT_CLIENT_PROJECTS: ClientProject[] = [];
 
-subscribeToCatalogCollection<ClientProject>(COLLECTION_NAME, (cloudItems) => {
+subscribeToCatalogCollection<ClientProject>(COLLECTION_NAME, (cloudItems, isEmpty) => {
+  if (isEmpty) return;
   const cleaned = cloudItems.filter((p) => p && !LEGACY_MOCK_CLIENT_IDS.has(p.id));
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned));
@@ -72,6 +74,7 @@ export const saveClientProjects = (projects: ClientProject[]): void => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
     window.dispatchEvent(new Event('storage'));
+    syncSectionToDataJson('clientProjects', projects).catch(() => {});
   } catch (err) {
     console.error('Error saving client projects to localStorage:', err);
   }
@@ -119,7 +122,6 @@ export const resetClientProjects = (): ClientProject[] => {
   current.forEach((p) => {
     deleteCatalogDocFromFirestore(COLLECTION_NAME, p.id).catch(() => {});
   });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-  window.dispatchEvent(new Event('storage'));
+  saveClientProjects([]);
   return [];
 };

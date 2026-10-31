@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { usePlatformSettings } from '../services/platformSettings';
+import { addDeveloperApplicant, getDeveloperApplicants } from '../services/firebase';
+import { syncSectionToDataJson } from '../services/dataJsonService';
 
 type TrackType = 'developers' | 'customer-service';
 
@@ -69,9 +71,7 @@ export const JoinUs: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const stored = localStorage.getItem('webrex_developer_applicants');
-      const list = stored ? JSON.parse(stored) : [];
-      list.unshift({
+      addDeveloperApplicant({
         id: (activeTrack === 'developers' ? 'DEV-' : 'CS-') + Date.now(),
         track: activeTrack === 'developers' ? 'مبرمجين وتطوير' : 'خدمة عملاء ودعم فني',
         name,
@@ -82,9 +82,9 @@ export const JoinUs: React.FC = () => {
         notes,
         timestamp: new Date().toISOString()
       });
-      localStorage.setItem('webrex_developer_applicants', JSON.stringify(list.slice(0, 80)));
+      syncSectionToDataJson('developerApplicants', getDeveloperApplicants()).catch(() => {});
     } catch (err) {
-      console.warn('Could not save applicant locally:', err);
+      console.warn('Could not save applicant:', err);
     }
     setSubmitted(true);
   };
